@@ -12,8 +12,8 @@ Go to your Magento 2 root dir and enter these two cmd :
 - composer require optimizme/mazen-seo-connector-for-magento2:dev-master
 - php bin/magento setup:upgrade
 
-Module (and dependency(s)) should now be installed in the /vendor folder
+Module (and dependencys) should now be installed in the /vendor folder
 
 ## Uninstall
 - composer remove optimizme/mazen-seo-connector-for-magento2
-- php bin/magento setup:upgrade 
+- php bin/magento setup:upgrade
