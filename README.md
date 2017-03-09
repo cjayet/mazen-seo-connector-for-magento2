@@ -16,4 +16,4 @@ Module (and dependency(s)) should now be installed in the /vendor folder
 
 ## Uninstall
 - composer remove optimizme/mazen-seo-connector-for-magento2
-- php bin/magento setup:upgrade
+- php bin/magento setup:upgrade 
