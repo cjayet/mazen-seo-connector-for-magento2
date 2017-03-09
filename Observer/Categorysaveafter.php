@@ -35,8 +35,6 @@ class Categorysaveafter implements ObserverInterface
         // no "all store views"
         $urlCategoryFrontend = $category->setStoreId($idStoreView)->getUrl();
 
-        //print_r($category->getData()); die;
-
         $categoryStatus = $category->getIsActive();
         if ($categoryStatus == 2) {
             $categoryStatus = 0;

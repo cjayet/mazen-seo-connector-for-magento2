@@ -74,7 +74,8 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
         if (!stristr($urlFile, $storeBaseUrl)) {
             // different: copy to CMS
             $basenameFile = basename($urlFile);
-            $folder       = $this->storeManager->getStore()->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_MEDIA).'/'.$this->wysiwygDirectory;
+            $strMedia = \Magento\Framework\UrlInterface::URL_TYPE_MEDIA;
+            $folder       = $this->storeManager->getStore()->getBaseUrl($strMedia).'/'.$this->wysiwygDirectory;
 
             if (file_exists($folder.'/'.$basenameFile)) {
                 return $folder.'/'.$basenameFile;
@@ -82,7 +83,7 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
                 return false;
             }
         } else {
-            // same: image already in prestashop
+            // same: image already in Magento
             return $urlFile;
         }
     }//end isMediaInLibrary()
@@ -100,7 +101,8 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
             $this->io->mkdir($this->directoryList->getPath('media').'/import/images', 0775);
         }
 
-        $urldir = $this->storeManager->getStore()->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_MEDIA).'/'.$this->wysiwygDirectory;
+        $urldir = $this->storeManager->getStore()->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_MEDIA);
+        $urldir .= '/'. $this->wysiwygDirectory;
 
         $nameFile   = basename($urlFile);
         $uploadfile = $uploaddir.'/'.$nameFile;
@@ -178,51 +180,6 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
     }//end getAuthorizedMediaExtension()
 
     /**
-     * Get Dom from html
-     *  and add a "<span>" tag in top
-     *
-     * @param  $doc
-     * @param  $tag
-     * @param  $content
-     * @return \DOMNodeList
-     */
-    public function getNodesInDom($doc, $tag, $content)
-    {
-        // load post content in DOM
-        libxml_use_internal_errors(true);
-        /* @var \DOMDocument $doc */
-        $doc->loadHTML('<span>'.$content.'</span>');
-        libxml_clear_errors();
-
-        // get all images in post content
-        $xp    = new \DOMXPath($doc);
-        $nodes = $xp->query('//'.$tag);
-        return $nodes;
-    }//end getNodesInDom()
-
-    /**
-     * Get HTML from dom document
-     *  and remove "<span>" tag in top
-     *
-     * @param  $doc
-     * @return string
-     */
-    public function getHtmlFromDom($doc)
-    {
-        /* @var $doc \DOMDocument */
-        $racine     = $doc->getElementsByTagName('span')->item(0);
-        $newContent = '';
-        if ($racine->hasChildNodes()) {
-            /* @var $racine \DOMNode */
-            foreach ($racine->childNodes as $node) {
-                $newContent .= utf8_decode($doc->saveHTML($node));
-            }
-        }
-
-        return $newContent;
-    }//end getHtmlFromDom()
-
-    /**
      * Clean content before saving
      *
      * @param  $content
@@ -243,14 +200,13 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
      * @param $field
      * @param $type
      * @param $value
-     * @param $objAction
+     * @param OptimizmeMazenActions $objAction
      * @param int $storeId
      * @param int       $isRequired
      * @return bool|\Magento\Catalog\Model\Product
      */
     public function saveObjField($idProduct, $field, $type, $value, $objAction, $storeId = null, $isRequired = 0)
     {
-        /* @var OptimizmeMazenActions $objAction */
         if (!is_numeric($idProduct)) {
             // need more data
             $objAction->addMsgError('ID element missing');
@@ -458,11 +414,6 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
 
         // Send the request
         $response = file_get_contents($url, false, $context);
-
-        // Check for errors
-        if ($response === false) {
-            // error sending data
-        }
     }
 
     /**
@@ -477,5 +428,4 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
             return null;
         }
     }
-
 }//end class

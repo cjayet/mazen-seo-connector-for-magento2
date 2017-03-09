@@ -41,7 +41,6 @@ class OptimizmeMazenJsonMessages extends \Magento\Framework\App\Helper\AbstractH
         }
 
         // return results
-        //$this->jsonHelper = $this->_objectManager->create('Magento\Framework\Json\Helper\Data');
         $encodedData = $this->jsonHelperData->jsonEncode($res);
         $this->action->getResponse()->setHeader('Access-Control-Allow-Origin', '*');
         $this->action->getResponse()->setHeader('Content-type', 'application/json')->setBody($encodedData);
@@ -63,11 +62,8 @@ class OptimizmeMazenJsonMessages extends \Magento\Framework\App\Helper\AbstractH
         }
 
         // return results
-        //$this->jsonHelper = $this->_objectManager->create('Magento\Framework\Json\Helper\Data');
         $encodedData = $this->jsonHelperData->jsonEncode($res);
         $this->action->getResponse()->setHeader('Access-Control-Allow-Origin', '*');
         $this->action->getResponse()->setHeader('Content-type', 'application/json')->setBody($encodedData);
     }
-
-
 }//end class

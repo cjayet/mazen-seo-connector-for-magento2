@@ -167,7 +167,6 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
                 $optimizmeMazenAction->deleteRedirection($data);
                 break;
 
-            // default
             default:
                 $boolNoAction = 1;
                 break;
