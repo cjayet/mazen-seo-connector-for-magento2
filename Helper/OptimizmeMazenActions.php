@@ -150,6 +150,8 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
 
             // load and return product data
             $this->returnAjax['product'] = [
+                'id' => $product->getId(),
+                'id_lang' => $storeViewId,
                 'title' => $product->getName(),
                 'reference' => $product->getSku(),
                 'short_description' => $product->getShortDescription(),
@@ -510,6 +512,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
 
                     $categoryInfos = [
                         'id' => $category->getId(),
+                        'id_lang' => $storeViewId,
                         'name' => $category->getName(),
                         'description' => $category->getDescription(),
                         'slug' => $category->getUrlKey(),
@@ -545,6 +548,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
         if ($category->getId() && $category->getId() != '') {
             $tabCategory = [
                 'id' => $category->getId(),
+                'id_lang' => $storeViewId,
                 'name' => $category->getName(),
                 'slug' => $category->getUrlKey(),
                 'url' => $category->getUrl(),
