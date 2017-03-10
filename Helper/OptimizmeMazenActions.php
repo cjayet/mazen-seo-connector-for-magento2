@@ -97,7 +97,6 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
 
         if (!empty($products)) {
             foreach ($products as $productBoucle) {
-                // get product details
                 $product = $this->productRepository->getById($productBoucle['entity_id'], false, $storeViewId);
                 $statusProduct = $product->getStatus();
 
