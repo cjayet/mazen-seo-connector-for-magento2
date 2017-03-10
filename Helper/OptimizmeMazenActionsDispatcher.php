@@ -10,7 +10,7 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
     /**
      * Action from MAZEN to do
      * @param $data
-     * @param $optimizmeMazenAction
+     * @param OptimizmeMazenActions $optimizmeMazenAction
      * @param string $postId
      * @return int
      */
@@ -24,7 +24,9 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
                 $optimizmeMazenAction->registerCMS($data);
                 break;
             case 'get_plugin_version':
-                $optimizmeMazenAction->getPluginVersion($this->OPTIMIZME_MAZEN_VERSION);
+                $optimizmeMazenAction->getPluginVersion(
+                    \Optimizme\Mazen\Controller\Index\Index::OPTIMIZME_MAZEN_VERSION
+                );
                 break;
 
             // products
