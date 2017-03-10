@@ -93,7 +93,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
         $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
 
         // get products list
-        $this->searchCriteria->setPageSize(5);     // TODO remove product limit
+        $this->searchCriteria->setPageSize();
         $products = $this->productRepository->getList($this->searchCriteria)->getItems();
 
         if (!empty($products)) {
