@@ -208,6 +208,8 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     /**
+     * Update short description
+     *
      * @param $idPost
      * @param $objData
      */
