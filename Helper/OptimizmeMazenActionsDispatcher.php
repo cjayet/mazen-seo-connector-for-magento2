@@ -17,7 +17,6 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
     public function dispatchMazenAction($data, $optimizmeMazenAction, $postId = '')
     {
         $boolNoAction = 0;
-
         switch ($data->action) {
             // init dialog
             case 'register_cms':
