@@ -93,12 +93,10 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
         $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
 
         // get products list
-        $this->searchCriteria->setPageSize(5);     // TODO remove product limit
         $products = $this->productRepository->getList($this->searchCriteria)->getItems();
 
         if (!empty($products)) {
             foreach ($products as $productBoucle) {
-                // get product details
                 $product = $this->productRepository->getById($productBoucle['entity_id'], false, $storeViewId);
                 $statusProduct = $product->getStatus();
 
@@ -150,6 +148,8 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
 
             // load and return product data
             $this->returnAjax['product'] = [
+                'id' => $product->getId(),
+                'id_lang' => $storeViewId,
                 'title' => $product->getName(),
                 'reference' => $product->getSku(),
                 'short_description' => $product->getShortDescription(),
@@ -208,6 +208,8 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     /**
+     * Update short description
+     *
      * @param $idPost
      * @param $objData
      */
@@ -510,6 +512,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
 
                     $categoryInfos = [
                         'id' => $category->getId(),
+                        'id_lang' => $storeViewId,
                         'name' => $category->getName(),
                         'description' => $category->getDescription(),
                         'slug' => $category->getUrlKey(),
@@ -545,6 +548,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
         if ($category->getId() && $category->getId() != '') {
             $tabCategory = [
                 'id' => $category->getId(),
+                'id_lang' => $storeViewId,
                 'name' => $category->getName(),
                 'slug' => $category->getUrlKey(),
                 'url' => $category->getUrl(),

@@ -16,7 +16,6 @@ use Firebase\JWT\JWT;
  */
 class Index extends \Magento\Framework\App\Action\Action
 {
-    private $resultPageFactory;
     private $optimizmeAction;
     private $optimizmeUtils;
     private $optimizmeActionDispatcher;
@@ -24,35 +23,31 @@ class Index extends \Magento\Framework\App\Action\Action
 
     private $returnResult;
     private $boolNoAction;
-    private $OPTIMIZME_MAZEN_VERSION;
-    private $OPTIMIZME_MAZEN_JWT_SECRET;
+    private $optimizmeMazenJwtSecret;
 
     const OPTIMIZME_MAZEN_URL_HOOK = 'http://preprodweb.optimiz.me/test/';
+    const OPTIMIZME_MAZEN_VERSION = '0.9.0';
 
     /**
      * Index constructor.
      * @param Context $context
-     * @param \Magento\Framework\View\Result\PageFactory $resultPageFactory
      * @param \Optimizme\Mazen\Helper\OptimizmeMazenActionsDispatcher $optimizmeMazenActionDispatcher
      * @param \Optimizme\Mazen\Helper\OptimizmeMazenActions $optimizmeMazenAction
      * @param \Optimizme\Mazen\Helper\OptimizmeMazenJsonMessages $optimizmeJsonMessages
      */
     public function __construct(
         Context $context,
-        \Magento\Framework\View\Result\PageFactory $resultPageFactory,
         \Optimizme\Mazen\Helper\OptimizmeMazenActionsDispatcher $optimizmeMazenActionDispatcher,
         \Optimizme\Mazen\Helper\OptimizmeMazenActions $optimizmeMazenAction,
         \Optimizme\Mazen\Helper\OptimizmeMazenUtils $optimizmeMazenUtils,
         \Optimizme\Mazen\Helper\OptimizmeMazenJsonMessages $optimizmeJsonMessages
     ) {
-        $this->resultPageFactory = $resultPageFactory;
         $this->optimizmeJsonMessages = $optimizmeJsonMessages;
         $this->optimizmeActionDispatcher = $optimizmeMazenActionDispatcher;
         $this->optimizmeAction = $optimizmeMazenAction;
         $this->optimizmeUtils = $optimizmeMazenUtils;
         $this->boolNoAction = 0;
-        $this->OPTIMIZME_MAZEN_VERSION = '1.0.0';
-        $this->OPTIMIZME_MAZEN_JWT_SECRET = '';
+        $this->optimizmeMazenJwtSecret = '';
         $this->returnResult = [];
 
         parent::__construct($context);
@@ -64,7 +59,7 @@ class Index extends \Magento\Framework\App\Action\Action
     public function execute()
     {
         // load JWT
-        $this->OPTIMIZME_MAZEN_JWT_SECRET = $this->optimizmeUtils->getJwtKey();
+        $this->optimizmeMazenJwtSecret = $this->optimizmeUtils->getJwtKey();
         $isDataFormMazen = false;
         $getRequestDataOtpme = $this->getRequest()->getParam('data_optme');
 
@@ -91,14 +86,14 @@ class Index extends \Magento\Framework\App\Action\Action
             } else {
                 if ($this->optimizmeUtils->optMazenIsJwt($jsonData->data_optme)) {
                     // JWT
-                    if (!isset($this->OPTIMIZME_MAZEN_JWT_SECRET) || $this->OPTIMIZME_MAZEN_JWT_SECRET == '') {
+                    if (!isset($this->optimizmeMazenJwtSecret) || $this->optimizmeMazenJwtSecret == '') {
                         $msg = 'JSON Web Token not defined, this CMS is not registered.';
                         $this->optimizmeJsonMessages->setMsgReturn($msg, $this->returnResult, 'danger');
                         $doAction = 0;
                     } else {
                         try {
                             // try decode JSON Web Token
-                            $decoded = JWT::decode($jsonData->data_optme, $this->OPTIMIZME_MAZEN_JWT_SECRET, ['HS256']);
+                            $decoded = JWT::decode($jsonData->data_optme, $this->optimizmeMazenJwtSecret, ['HS256']);
                             $dataOptimizme = $decoded;
                         } catch (\Firebase\JWT\SignatureInvalidException $e) {
                             $msg = 'JSON Web Token not decoded properly, secret may be not correct';
