@@ -65,6 +65,24 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
             case 'set_product_hrefattributes':
                 $optimizmeMazenAction->updateObjectAttributesTag($postId, $data, 'a', 'Product', 'Description');
                 break;
+            case 'get_product_h1':
+                $optimizmeMazenAction->getObjectAttributesTag($postId, $data, 'h1', 'Product', 'Description');
+                break;
+            case 'get_product_h2':
+                $optimizmeMazenAction->getObjectAttributesTag($postId, $data, 'h2', 'Product', 'Description');
+                break;
+            case 'get_product_h3':
+                $optimizmeMazenAction->getObjectAttributesTag($postId, $data, 'h3', 'Product', 'Description');
+                break;
+            case 'get_product_h4':
+                $optimizmeMazenAction->getObjectAttributesTag($postId, $data, 'h4', 'Product', 'Description');
+                break;
+            case 'get_product_h5':
+                $optimizmeMazenAction->getObjectAttributesTag($postId, $data, 'h5', 'Product', 'Description');
+                break;
+            case 'get_product_h6':
+                $optimizmeMazenAction->getObjectAttributesTag($postId, $data, 'h6', 'Product', 'Description');
+                break;
             case 'set_product_h1':
                 $optimizmeMazenAction->updateObjectAttributesTag($postId, $data, 'h1', 'Product', 'Description');
                 break;
@@ -89,7 +107,7 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
                 $optimizmeMazenAction->getPages();
                 break;
             case 'get_post':
-                $optimizmeMazenAction->getPage($postId);
+                $optimizmeMazenAction->getPage($postId, $data);
                 break;
             case 'set_post_title':
                 $optimizmeMazenAction->updateObjectTitle($postId, $data, 'Page', 'Title');
@@ -117,6 +135,24 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
                 break;
             case 'set_post_hrefattributes':
                 $optimizmeMazenAction->updateObjectAttributesTag($postId, $data, 'a', 'Page', 'Content');
+                break;
+            case 'get_post_h1':
+                $optimizmeMazenAction->getObjectAttributesTag($postId, $data, 'h1', 'Page', 'Content');
+                break;
+            case 'get_post_h2':
+                $optimizmeMazenAction->getObjectAttributesTag($postId, $data, 'h2', 'Page', 'Content');
+                break;
+            case 'get_post_h3':
+                $optimizmeMazenAction->getObjectAttributesTag($postId, $data, 'h3', 'Page', 'Content');
+                break;
+            case 'get_post_h4':
+                $optimizmeMazenAction->getObjectAttributesTag($postId, $data, 'h4', 'Page', 'Content');
+                break;
+            case 'get_post_h5':
+                $optimizmeMazenAction->getObjectAttributesTag($postId, $data, 'h5', 'Page', 'Content');
+                break;
+            case 'get_post_h6':
+                $optimizmeMazenAction->getObjectAttributesTag($postId, $data, 'h6', 'Page', 'Content');
                 break;
             case 'set_post_h1':
                 $optimizmeMazenAction->updateObjectAttributesTag($postId, $data, 'h1', 'Page', 'Content');

@@ -25,7 +25,7 @@ class Index extends \Magento\Framework\App\Action\Action
     private $boolNoAction;
     private $optimizmeMazenJwtSecret;
 
-    const OPTIMIZME_MAZEN_URL_HOOK = 'http://preprodweb.optimiz.me/test/';
+    const OPTIMIZME_MAZEN_URL_HOOK = 'https://mazen-app.com/mazen-webhook/logger.php';
     const OPTIMIZME_MAZEN_VERSION = '0.9.0';
 
     /**

@@ -428,4 +428,50 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
             return null;
         }
     }
+
+    /**
+     * @param $idObj
+     * @param $objData
+     * @param $tag
+     * @param $type
+     * @param $field
+     * @param OptimizmeMazenDomManipulation $optDom
+     * @param int $tab : return content in an array, or full nodes object
+     * @return array
+     */
+    public function optMazenGetNodesFromContent($idObj, $objData, $tag, $type, $field, $optDom, $tab = 0)
+    {
+        $storeViewId = $this->extractStoreViewFromMazenData($objData);
+
+        // get product details
+        if ($type == 'Product' || $type == 'Category') {
+            $object = $this->productRepository->getById($idObj, false, $storeViewId);
+            $idObj = $object->getId();
+        } else {
+            $object = $this->pageRepository->getById($idObj);
+            $idObj = $object->getPageId();
+        }
+
+        if ($idObj != '') {
+            // load nodes
+            if ($field == 'Description') {
+                $nodes = $optDom->getNodesInDom($tag, $object->getDescription());
+            } else {
+                $nodes = $optDom->getNodesInDom($tag, $object->getContent());
+            }
+
+
+            // return content in an array
+            if ($tab == 1) {
+                $tabTags = [];
+                if ($nodes->length > 0) {
+                    foreach ($nodes as $node) {
+                        array_push($tabTags, $node->nodeValue);
+                    }
+                }
+                return $tabTags;
+            }
+        }
+        return $nodes;
+    }
 }//end class

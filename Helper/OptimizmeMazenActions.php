@@ -160,6 +160,18 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
                 'meta_title' => $product->getMetaTitle(),
                 'meta_description' => $product->getMetaDescription()
             ];
+
+            for ($i = 1; $i < 7; $i++) {
+                $this->returnAjax['product']['h'. $i] = $this->optimizmeMazenUtils->optMazenGetNodesFromContent(
+                    $idPost,
+                    $objData,
+                    'h'. $i,
+                    'Product',
+                    'Description',
+                    $this->optimizmeMazenDomManipulation,
+                    1
+                );
+            }
         }
     }
 
@@ -225,106 +237,125 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
      * @param $tag
      * @param $type
      * @param $field
+     */
+    public function getObjectAttributesTag($idObj, $objData, $tag, $type, $field)
+    {
+        if (!is_numeric($idObj)) {
+            // need more data
+            $this->addMsgError('ID product not sent', 1);
+        } else {
+            $tabTags = $this->optimizmeMazenUtils->optMazenGetNodesFromContent(
+                $idObj,
+                $objData,
+                $tag,
+                $type,
+                $field,
+                $this->optimizmeMazenDomManipulation,
+                1
+            );
+
+            $this->returnAjax = [
+                $tag => $tabTags
+            ];
+        }
+    }
+
+
+    /**
+     * @param $idObj
+     * @param $objData
+     * @param $tag
+     * @param $type
+     * @param $field
      * @var \DOMElement $node
      */
     public function updateObjectAttributesTag($idObj, $objData, $tag, $type, $field)
     {
+        header("Access-Control-Allow-Origin: *");
+        header('Content-Type: application/json');
+
         $boolModified = 0;
         if (!is_numeric($idObj)) {
             // need more data
             $this->addMsgError('ID product not sent', 1);
-        }
-        if ($objData->initial_content == '') {
+        } elseif ($objData->initial_content == '') {
             // need more data
             $this->addMsgError('No initial content found, action canceled', 1);
         } else {
             $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
 
-            // get product details
-            if ($type == 'Product' || $type == 'Category') {
-                $object = $this->productRepository->getById($idObj, false, $storeViewId);
-            } else {
-                $object = $this->pageRepository->getById($idObj);
-            }
+            $nodes = $this->optimizmeMazenUtils->optMazenGetNodesFromContent(
+                $idObj,
+                $objData,
+                $tag,
+                $type,
+                $field,
+                $this->optimizmeMazenDomManipulation
+            );
 
-            if ($type == 'Product' || $type == 'Category') {
-                $idObj = $object->getId();
-            } else {
-                $idObj = $object->getPageId();
-            }
+            if ($nodes->length > 0) {
+                foreach ($nodes as $node) {
+                    if ($tag == 'img') {
+                        if ($node->getAttribute('src') == $objData->initial_content) {
+                            // image found in source: update (force utf8)
+                            $boolModified = 1;
 
-            if ($idObj != '') {
-                // load nodes
-                if ($field == 'Description') {
-                    $nodes = $this->optimizmeMazenDomManipulation->getNodesInDom($tag, $object->getDescription());
-                } else {
-                    $nodes = $this->optimizmeMazenDomManipulation->getNodesInDom($tag, $object->getContent());
-                }
-
-                if ($nodes->length > 0) {
-                    foreach ($nodes as $node) {
-                        if ($tag == 'img') {
-                            if ($node->getAttribute('src') == $objData->initial_content) {
-                                // image found in source: update (force utf8)
-                                $boolModified = 1;
-
-                                if ($objData->alt_image != '') {
-                                    $node->setAttribute('alt', utf8_encode($objData->alt_image));
-                                } else {
-                                    $node->removeAttribute('alt');
-                                }
-
-                                if ($objData->title_image != '') {
-                                    $node->setAttribute('title', utf8_encode($objData->title_image));
-                                } else {
-                                    $node->removeAttribute('title');
-                                }
+                            if ($objData->alt_image != '') {
+                                $node->setAttribute('alt', utf8_encode($objData->alt_image));
+                            } else {
+                                $node->removeAttribute('alt');
                             }
-                        } elseif ($tag == 'a') {
-                            if ($node->getAttribute('href') == $objData->initial_content) {
-                                // href found in source: update (force utf8)
-                                $boolModified = 1;
 
-                                if ($objData->rel_lien != '') {
-                                    $node->setAttribute('rel', utf8_encode($objData->rel_lien));
-                                } else {
-                                    $node->removeAttribute('rel');
-                                }
+                            if ($objData->title_image != '') {
+                                $node->setAttribute('title', utf8_encode($objData->title_image));
+                            } else {
+                                $node->removeAttribute('title');
+                            }
+                        }
+                    } elseif ($tag == 'a') {
+                        if ($node->getAttribute('href') == $objData->initial_content) {
+                            // href found in source: update (force utf8)
+                            $boolModified = 1;
 
-                                if ($objData->target_lien != '') {
-                                    $node->setAttribute('target', utf8_encode($objData->target_lien));
-                                } else {
-                                    $node->removeAttribute('target');
-                                }
+                            if ($objData->rel_lien != '') {
+                                $node->setAttribute('rel', utf8_encode($objData->rel_lien));
+                            } else {
+                                $node->removeAttribute('rel');
                             }
-                        } elseif ($tag == 'h1' ||
-                            $tag == 'h2' ||
-                            $tag == 'h3' ||
-                            $tag == 'h4' ||
-                            $tag == 'h5' ||
-                            $tag == 'h6'
-                        ) {
-                            $valueInNode = $node->nodeValue ;
-                            if ($objData->initial_content == $valueInNode) {
-                                // change
-                                $boolModified = 1;
-                                $node->nodeValue = $objData->text_new;
+
+                            if ($objData->target_lien != '') {
+                                $node->setAttribute('target', utf8_encode($objData->target_lien));
+                            } else {
+                                $node->removeAttribute('target');
                             }
+                        }
+                    } elseif ($tag == 'h1' ||
+                        $tag == 'h2' ||
+                        $tag == 'h3' ||
+                        $tag == 'h4' ||
+                        $tag == 'h5' ||
+                        $tag == 'h6'
+                    ) {
+                        $valueInNode = $node->nodeValue ;
+                        if ($objData->initial_content == $valueInNode) {
+                            // change
+                            $boolModified = 1;
+                            $node->nodeValue = $objData->text_new;
                         }
                     }
                 }
+            }
 
-                if ($boolModified == 1) {
-                    // action done: save new content
-                    // root span to remove
-                    $newContent = $this->optimizmeMazenDomManipulation->getHtmlFromDom();
+            if ($boolModified == 1) {
+                // action done: save new content
+                // root span to remove
+                $newContent = $this->optimizmeMazenDomManipulation->getHtmlFromDom();
 
-                    // update
-                    $this->optimizmeMazenUtils->saveObjField($idObj, $field, $type, $newContent, $this, $storeViewId);
-                } else {
-                    // nothing done
-                    $this->addMsgError('Nothing done.');
-                }
+                // update
+                $this->optimizmeMazenUtils->saveObjField($idObj, $field, $type, $newContent, $this, $storeViewId);
+            } else {
+                // nothing done
+                $this->addMsgError('Nothing done.');
             }
         }
     }
@@ -608,7 +639,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
      *
      * @param $idPost
      */
-    public function getPage($idPost)
+    public function getPage($idPost, $objData)
     {
         // get page detail
         $page = $this->pageRepository->getById($idPost);
@@ -633,6 +664,18 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
                 'meta_title' => $page->getMetaTitle(),
                 'meta_description' => $page->getMetaDescription()
             ];
+
+            for ($i = 1; $i < 7; $i++) {
+                $this->returnAjax['post']['h'. $i] = $this->optimizmeMazenUtils->optMazenGetNodesFromContent(
+                    $idPost,
+                    $objData,
+                    'h'. $i,
+                    'page',
+                    'Content',
+                    $this->optimizmeMazenDomManipulation,
+                    1
+                );
+            }
         }
     }
 
