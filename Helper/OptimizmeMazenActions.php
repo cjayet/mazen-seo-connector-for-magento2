@@ -636,7 +636,6 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
 
     /**
      * Get cms page detail
-     *
      * @param $idPost
      */
     public function getPage($idPost, $objData)
