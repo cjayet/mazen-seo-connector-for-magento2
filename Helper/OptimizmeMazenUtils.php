@@ -21,6 +21,9 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
     private $categoryRepository;
     private $pageRepository;
     private $io;
+    private $resourceModel;
+    //private $optimizmeMazenDomManipulation;
+    private $urlRewrite;
 
     /**
      * OptimizmeMazenUtils constructor.
@@ -35,6 +38,8 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
      * @param \Magento\Catalog\Model\CategoryRepository $categoryRepository
      * @param \Magento\Cms\Model\PageRepository $pageRepository
      * @param \Magento\Framework\Filesystem\Io\File $io
+     * @param \Magento\Catalog\Model\ResourceModel\Product $resourceModel
+     * @param \Magento\UrlRewrite\Model\UrlRewrite $urlRewrite
      */
     public function __construct(
         \Magento\Store\Model\StoreManagerInterface $storeManager,
@@ -47,7 +52,10 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Catalog\Model\ProductRepository $productRepository,
         \Magento\Catalog\Model\CategoryRepository $categoryRepository,
         \Magento\Cms\Model\PageRepository $pageRepository,
-        \Magento\Framework\Filesystem\Io\File $io
+        \Magento\Framework\Filesystem\Io\File $io,
+        \Magento\Catalog\Model\ResourceModel\Product $resourceModel,
+        //\Optimizme\Mazen\Helper\OptimizmeMazenDomManipulation $optimizmeMazenDomManipulation
+        \Magento\UrlRewrite\Model\UrlRewrite $urlRewrite
     ) {
         $this->storeManager      = $storeManager;
         $this->wysiwygDirectory  = $wysiwyg::IMAGE_DIRECTORY;
@@ -60,6 +68,9 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
         $this->categoryRepository = $categoryRepository;
         $this->pageRepository = $pageRepository;
         $this->io                = $io;
+        $this->resourceModel                = $resourceModel;
+        //$this->optimizmeMazenDomManipulation = $optimizmeMazenDomManipulation;
+        $this->urlRewrite = $urlRewrite;
     }//end __construct()
 
     /**
@@ -422,7 +433,7 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
      */
     public function extractStoreViewFromMazenData($data)
     {
-        if (isset($data->id_lang) && is_integer($data->id_lang)) {
+        if (isset($data->id_lang) && is_numeric($data->id_lang)) {
             return $data->id_lang;
         } else {
             return null;
@@ -460,7 +471,6 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
                 $nodes = $optDom->getNodesInDom($tag, $object->getContent());
             }
 
-
             // return content in an array
             if ($tab == 1) {
                 $tabTags = [];
@@ -474,4 +484,218 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
         }
         return $nodes;
     }
+
+    /**
+     * Search tags in given html
+     * @param OptimizmeMazenDomManipulation $optDom
+     * @param $value
+     * @param $tag
+     * @param string $attribute
+     * @return array
+     */
+    public function optMazenGetNodesFromKnownContent($optDom, $value, $tag, $attribute = '')
+    {
+        $tabTags = [];
+
+        $nodes = $optDom->getNodesInDom($tag, $value);
+
+        // return content in an array
+        if ($nodes->length > 0) {
+            foreach ($nodes as $node) {
+                if ($attribute != '') {
+                    array_push($tabTags, $node->getAttribute($attribute));
+                } else {
+                    array_push($tabTags, $node->nodeValue);
+                }
+            }
+        }
+        return $tabTags;
+    }
+
+    /**
+     * @param OptimizmeMazenDomManipulation $objDom
+     * @param $content
+     * @param $tag
+     * @param string $attribute
+     * @return array
+     */
+    public function getNodesFromContent($objDom, $content, $tag, $attribute = '')
+    {
+        if (class_exists("DOMDocument")) {
+            $doc = new \DOMDocument;
+            $nodes = $objDom->getNodesInDom($doc, $tag, $content);
+            $tabTags = array();
+            if ($nodes->length > 0) {
+                foreach ($nodes as $node) {
+                    if ($attribute != '') {
+                        array_push($tabTags, $node->getAttribute($attribute));
+                    } else {
+                        array_push($tabTags, $node->nodeValue);
+                    }
+                }
+            }
+            return $tabTags;
+        }
+    }
+
+    /**
+     * @param OptimizmeMazenDomManipulation $dom
+     * @param $idProduct
+     * @param $storeViewId
+     * @param $loadAll
+     * @param array $fieldsFilter
+     * @return array
+     */
+    public function loadProductForMazen($dom, $idProduct, $storeViewId, $loadAll, $fieldsFilter = array())
+    {
+        $tabPost = [];
+
+        // load product
+        $product = $this->productRepository->getById($idProduct, false, $storeViewId);
+
+        if ($product->getName() != '') {
+            $statusProduct = $product->getStatus();
+            if ($statusProduct == 2) {
+                $statusProduct = 0;
+            }
+
+            // url
+            $urlProduct = $product->getProductUrl();
+            if (strstr($urlProduct, '?__')) {
+                $tabUrlProduct = explode('?__', $urlProduct);
+                $urlProduct = $tabUrlProduct[0];
+            }
+
+
+            // minimum viable for a product
+            $tabPost =  [
+                'id' => (int)$product->getId(),
+                'id_lang' => $product->getStoreId(),
+                'title' => $product->getName(),
+                'publish' => $statusProduct,
+                'url' => $urlProduct
+            ];
+
+            $tabPossibleContents = [
+                'reference' => $product->getSku(),
+                'short_description' => $product->getShortDescription(),
+                'content' => $product->getDescription(),
+                'slug' => $product->getUrlKey(),
+                'meta_title' => $product->getMetaTitle(),
+                'meta_description' => $product->getMetaDescription(),
+                'a' => $this->optMazenGetNodesFromKnownContent(
+                    $dom,
+                    $product->getDescription(),
+                    'a'
+                ),
+                'img' => $this->optMazenGetNodesFromKnownContent(
+                    $dom,
+                    $product->getDescription(),
+                    'img',
+                    'src'
+                ),
+                'h1' => $this->optMazenGetNodesFromKnownContent(
+                    $dom,
+                    $product->getDescription(),
+                    'h1'
+                ),
+                'h2' => $this->optMazenGetNodesFromKnownContent(
+                    $dom,
+                    $product->getDescription(),
+                    'h2'
+                ),
+                'h3' => $this->optMazenGetNodesFromKnownContent(
+                    $dom,
+                    $product->getDescription(),
+                    'h3'
+                ),
+                'h4' => $this->optMazenGetNodesFromKnownContent(
+                    $dom,
+                    $product->getDescription(),
+                    'h4'
+                ),
+                'h5' => $this->optMazenGetNodesFromKnownContent(
+                    $dom,
+                    $product->getDescription(),
+                    'h5'
+                ),
+                'h6' => $this->optMazenGetNodesFromKnownContent(
+                    $dom,
+                    $product->getDescription(),
+                    'h6'
+                ),
+            ];
+
+            // informations from product content
+            /*
+            $tabPossibleContents['a'] =  $this->optMazenGetNodesFromContent(
+                $product->getId(),
+                $objData,
+                'h'. $i,
+                'Product',
+                'Description',
+                $this->optimizmeMazenDomManipulation,
+                1
+            );
+            */
+
+
+            // add non required fields
+            foreach ($tabPossibleContents as $key => $value) {
+                if ($loadAll == 1 || (!empty($fieldsFilter) && in_array($key, $fieldsFilter))) {
+                    $tabPost[$key] = $value;
+                }
+            }
+        }
+
+
+        return $tabPost;
+    }
+
+    /**
+     * @return array
+     */
+    public function getAllStoresId()
+    {
+        $tabIdStores = [];
+        $stores = $this->storeManager->getStores();
+        foreach ($stores as $store) {
+            array_push($tabIdStores, $store->getId());
+        }
+        return $tabIdStores;
+    }
+
+    /**
+     * @param $url
+     * @return array|mixed
+     */
+    public function getProductSlugFromUrl($url)
+    {
+        //$productId = (int)$this->getRequest()->getParam('id');
+        //echo "ID:" . $productId; die;
+       // $test = new \Magento\Framework\DataObject(['table' => 'catalog_product_entity_varchar'])
+
+
+        /*
+        $oRewrite = Mage::getModel('core/url_rewrite')
+            ->setStoreId(Mage::app()->getStore()->getId())
+            ->loadByRequestPath($vPath);
+        */
+
+        //$oRewrite = $this->urlRewrite->
+
+        // Get the product permalink
+        $slug = explode('/', $url);
+        $slug = end($slug);
+
+        //$urlBase = $this->storeManager->getStore()->getBaseUrl();
+        //$urlProduct = str_replace($urlBase, '', $url);
+
+        if (strstr($slug, '.')) {
+            $slug = explode('.', $slug);
+            $slug = $slug[0];
+        }
+        return $slug;
+    }
+
 }//end class

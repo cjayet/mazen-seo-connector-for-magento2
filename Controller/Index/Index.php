@@ -115,11 +115,13 @@ class Index extends \Magento\Framework\App\Action\Action
             if ($doAction == 1) {
                 // post id
                 $postId = '';
-                if (is_numeric($dataOptimizme->url_cible)) {
+                if (isset($dataOptimizme->url_cible) && is_numeric($dataOptimizme->url_cible)) {
                     $postId = $dataOptimizme->url_cible;
                 } else {
                     if (isset($dataOptimizme->id_post) && $dataOptimizme->id_post != '') {
                         $postId = $dataOptimizme->id_post;
+                    } elseif (isset($dataOptimizme->id) && $dataOptimizme->id != '') {
+                        $postId = $dataOptimizme->id;
                     }
                 }
 

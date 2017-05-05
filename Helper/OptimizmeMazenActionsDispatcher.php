@@ -18,6 +18,7 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
     {
         $boolNoAction = 0;
         switch ($data->action) {
+
             // init dialog
             case 'register_cms':
                 $optimizmeMazenAction->registerCMS($data);
@@ -26,6 +27,110 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
                 $optimizmeMazenAction->getPluginVersion(
                     \Optimizme\Mazen\Controller\Index\Index::OPTIMIZME_MAZEN_VERSION
                 );
+                break;
+
+
+            // api v2
+            case 'get':
+                if (isset($data->type) && $data->type != '') {
+                    if ($data->type == 'product') {
+                        if (isset($data->id) && is_numeric($data->id)) {
+                            $optimizmeMazenAction->getProduct($postId, $data);
+                        } else {
+                            $optimizmeMazenAction->getProducts($data);
+                        }
+                    } elseif ($data->type == 'page') {
+                        if (isset($data->id) && is_numeric($data->id)) {
+                            $optimizmeMazenAction->getPage($postId, $data);
+                        } else {
+                            $optimizmeMazenAction->getPages();
+                        }
+                    } else {
+                        $optimizmeMazenAction->addMsgError('Not allowed type to get');
+                    }
+                } else {
+                    $optimizmeMazenAction->addMsgError('No type specified for get');
+                }
+                break;
+
+            case 'update':
+                if (isset($data->type) && $data->type != '') {
+                    if (!is_numeric($postId)) {
+                        $optimizmeMazenAction->addMsgError('ID not specified or invalid');
+                    } else {
+                        if ($data->type == 'product') {
+                            if ($data->field == 'title') {
+                                $optimizmeMazenAction->updateObjectTitle($postId, $data, 'Product', 'Name');
+                            } elseif ($data->field == 'reference') {
+                                $optimizmeMazenAction->updateObjectReference($postId, $data, 'Product', 'Sku');
+                            } elseif ($data->field == 'short_description') {
+                                $optimizmeMazenAction->updateObjectShortDescription($postId, $data, 'Product', 'ShortDescription');
+                            } elseif ($data->field == 'content') {
+                                $optimizmeMazenAction->updateObjectContent($postId, $data, 'Product', 'Description');
+                            } elseif ($data->field == 'slug') {
+                                $optimizmeMazenAction->updateObjectSlug($postId, $data, 'Product', 'UrlKey');
+                            } elseif ($data->field == 'publish') {
+                                $optimizmeMazenAction->updateObjectStatus($postId, $data, 'Product', 'Status');
+                            } elseif ($data->field == 'meta_title') {
+                                $optimizmeMazenAction->updateObjectMetaTitle($postId, $data, 'Product', 'MetaTitle');
+                            } elseif ($data->field == 'meta_description') {
+                                $optimizmeMazenAction->updateObjectMetaDescription($postId, $data, 'Product', 'MetaDescription');
+                            } elseif ($data->field == 'a') {
+                                if (isset($data->attribute) && $data->attribute != '') {
+                                    $optimizmeMazenAction->changeSomeContentInTag($postId, $data, 'Product', 'Description', 'a', $data->attribute);
+                                } else {
+                                    $optimizmeMazenAction->changeSomeContentInTag($postId, $data, 'Product', 'Description', 'a');
+                                }
+                            } elseif ($data->field == 'img') {
+                                if (isset($data->attribute) && $data->attribute != '') {
+                                    $optimizmeMazenAction->changeSomeContentInTag($postId, $data, 'Product', 'Description', 'img', $data->attribute);
+                                } else {
+                                    $optimizmeMazenAction->addMsgError('Attribute required for img '. $data->type .' update');
+                                }
+                            } elseif ($data->field == 'h1' || $data->field == 'h2' || $data->field == 'h3' || $data->field == 'h4' || $data->field == 'h5' || $data->field == 'h6') {
+                                $optimizmeMazenAction->changeSomeContentInTag($postId, $data, 'Product', 'Description', $data->field);
+                            } else {
+                                $optimizmeMazenAction->addMsgError('Field '. $data->field .' is not supported in update '. $data->type);
+                            }
+                        } elseif ($data->type == 'page') {
+                            if ($data->field == 'title') {
+                                $optimizmeMazenAction->updateObjectTitle($postId, $data, 'Page', 'Title');
+                            } elseif ($data->field == 'short_description') {
+                                $optimizmeMazenAction->updateObjectShortDescription($postId, $data, 'Page', 'ContentHeading');
+                            } elseif ($data->field == 'content') {
+                                $optimizmeMazenAction->updateObjectContent($postId, $data, 'Page', 'Content');
+                            } elseif ($data->field == 'slug') {
+                                $optimizmeMazenAction->updateObjectSlug($postId, $data, 'Page', 'Identifier');
+                            } elseif ($data->field == 'publish') {
+                                $optimizmeMazenAction->updateObjectStatus($postId, $data, 'Page', 'IsActive');
+                            } elseif ($data->field == 'meta_title') {
+                                $optimizmeMazenAction->updateObjectMetaTitle($postId, $data, 'Page', 'Metatitle');
+                            } elseif ($data->field == 'meta_description') {
+                                $optimizmeMazenAction->updateObjectMetaDescription($postId, $data, 'Page', 'Metadescription');
+                            } elseif ($data->field == 'h1' || $data->field == 'h2' || $data->field == 'h3' || $data->field == 'h4' || $data->field == 'h5' || $data->field == 'h6') {
+                                $optimizmeMazenAction->changeSomeContentInTag($postId, $data, 'Page', 'Content', $data->field);
+                            } elseif ($data->field == 'a') {
+                                if (isset($data->attribute) && $data->attribute != '') {
+                                    $optimizmeMazenAction->changeSomeContentInTag($postId, $data, 'Page', 'Content', 'a', $data->attribute);
+                                } else {
+                                    $optimizmeMazenAction->changeSomeContentInTag($postId, $data, 'Page', 'Content', 'a');
+                                }
+                            } elseif ($data->field == 'img') {
+                                if (isset($data->attribute) && $data->attribute != '') {
+                                    $optimizmeMazenAction->changeSomeContentInTag($postId, $data, 'Page', 'Content', 'img', $data->attribute);
+                                } else {
+                                    $optimizmeMazenAction->addMsgError('Attribute required for img '. $data->type .' update');
+                                }
+                            } else {
+                                $optimizmeMazenAction->addMsgError('Field '. $data->field .' is not supported in update '. $data->type);
+                            }
+                        } else {
+                            $optimizmeMazenAction->addMsgError('Not allowed type to update');
+                        }
+                    }
+                } else {
+                    $optimizmeMazenAction->addMsgError('No type specified for update');
+                }
                 break;
 
             // products

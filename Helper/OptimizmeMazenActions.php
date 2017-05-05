@@ -92,26 +92,74 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
         $productsReturn = [];
         $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
 
+        // add fields?
+        if (isset($objData->fields) && is_array($objData->fields) && !empty($objData->fields)) {
+            $fieldsFilter = $objData->fields;
+        } else {
+            $fieldsFilter = array();
+        }
+
         // get products list
-        $products = $this->productRepository->getList($this->searchCriteria)->getItems();
+        //$products = $this->productCollectionFactory->create();
+        //$products->addStoreFilter($storeViewId);
 
-        if (!empty($products)) {
-            foreach ($products as $productBoucle) {
-                $product = $this->productRepository->getById($productBoucle['entity_id'], false, $storeViewId);
-                $statusProduct = $product->getStatus();
+        if (isset($objData->links) && is_array($objData->links) && !empty($objData->links)) {
+            $this->returnAjax['link_error'] = [];
+            if ($storeViewId === null) {
+                $tabStoresId = $this->optimizmeMazenUtils->getAllStoresId();
+            } else {
+                $tabStoresId = [$storeViewId];
+            }
 
-                if ($statusProduct == 2) {
-                    $statusProduct = 0;
+            // for each link
+            foreach ($objData->links as $link) {
+                $slug = $this->optimizmeMazenUtils->getProductSlugFromUrl($link);
+                $boolLinkFound = 0;
+
+                foreach ($tabStoresId as $storeIdBoucle) {
+                    if ($boolLinkFound == 0) {
+                        // search this link in this storeid
+                        $products = $this->productCollectionFactory->create();
+                        $products->addStoreFilter($storeIdBoucle);
+                        $products->addAttributeToFilter('url_key', $slug);
+                        $products->getFirstItem();
+
+                        if (!empty($products)) {
+                            foreach ($products as $productBoucle) {
+                                $boolLinkFound = 1;
+                                $prodReturn = $this->optimizmeMazenUtils->loadProductForMazen(
+                                    $this->optimizmeMazenDomManipulation,
+                                    $productBoucle['entity_id'],
+                                    $storeIdBoucle,
+                                    0,
+                                    $fieldsFilter
+                                );
+                                array_push($productsReturn, $prodReturn);
+                            }
+
+                        }
+                    }
                 }
 
-                if ($product->getName() != '') {
-                    $prodReturn = [
-                        'ID' => $product->getId(),
-                        'id_lang' => $product->getStoreId(),
-                        'title' => $product->getName(),
-                        'publish' => $statusProduct,
-                        'url' => $product->getProductUrl()
-                    ];
+                if ($boolLinkFound == 0) {
+                    // link not found in each storeid : add in error
+                    array_push($this->returnAjax['link_error'], $link);
+                }
+            }
+        } else {
+            // no link filter
+            $products = $this->productCollectionFactory->create();
+            $products->addStoreFilter($storeViewId);
+
+            if (!empty($products)) {
+                foreach ($products as $productBoucle) {
+                    $prodReturn = $this->optimizmeMazenUtils->loadProductForMazen(
+                        $this->optimizmeMazenDomManipulation,
+                        $productBoucle['entity_id'],
+                        $storeViewId,
+                        0,
+                        $fieldsFilter
+                    );
                     array_push($productsReturn, $prodReturn);
                 }
             }
@@ -119,6 +167,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
 
         $tabResults['products'] = $productsReturn;
         $this->returnAjax['arborescence'] = $tabResults;
+
     }
 
     /**
@@ -131,48 +180,14 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
     {
         // get product details
         $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
-        $product = $this->productRepository->getById($idPost, false, $storeViewId);
 
-        if ($product->getId() != '') {
-            // check si le contenu est bien compris dans une balise "row" pour qu'il soit bien inclus dans l'éditeur
-            if (trim($product->getDescription()) != '') {
-                if (!stristr($product->getDescription(), '<div class="row')) {
-                    $product->setDescription('<div class="row ui-droppable"><div class="col-md-12 col-sm-12 col-xs-12 column"><div class="ge-content ge-content-type-tinymce" data-ge-content-type="tinymce">'. $product->getDescription() .'</div></div></div>');
-                }
-            }
-
-            $statusProduct = $product->getStatus();
-            if ($statusProduct == 2) {
-                $statusProduct = 0;
-            }
-
-            // load and return product data
-            $this->returnAjax['product'] = [
-                'id' => $product->getId(),
-                'id_lang' => $storeViewId,
-                'title' => $product->getName(),
-                'reference' => $product->getSku(),
-                'short_description' => $product->getShortDescription(),
-                'content' => $product->getDescription(),
-                'slug' => $product->getUrlKey(),
-                'url' => $product->getProductUrl(),
-                'publish' => $statusProduct,
-                'meta_title' => $product->getMetaTitle(),
-                'meta_description' => $product->getMetaDescription()
-            ];
-
-            for ($i = 1; $i < 7; $i++) {
-                $this->returnAjax['product']['h'. $i] = $this->optimizmeMazenUtils->optMazenGetNodesFromContent(
-                    $idPost,
-                    $objData,
-                    'h'. $i,
-                    'Product',
-                    'Description',
-                    $this->optimizmeMazenDomManipulation,
-                    1
-                );
-            }
-        }
+        $prodReturn = $this->optimizmeMazenUtils->loadProductForMazen(
+            $this->optimizmeMazenDomManipulation,
+            $idPost,
+            $storeViewId,
+            1
+        );
+        $this->returnAjax['product'] = $prodReturn;
     }
 
     /**
@@ -186,7 +201,15 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
     public function updateObjectTitle($idPost, $objData, $type, $field)
     {
         $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
-        $this->optimizmeMazenUtils->saveObjField($idPost, $field, $type, $objData->new_title, $this, $storeViewId, 1);
+        if (isset($objData->value)) {
+            // v2
+            $fieldUpdate = $objData->value;
+        } else {
+            // v1
+            $fieldUpdate = $objData->new_title;
+        }
+
+        $this->optimizmeMazenUtils->saveObjField($idPost, $field, $type, $fieldUpdate, $this, $storeViewId, 1);
     }
 
     /**
@@ -197,14 +220,22 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
      */
     public function updateObjectContent($idPost, $objData, $type, $field)
     {
-        if (!isset($objData->new_content)) {
+        if (isset($objData->value)) {
+            // v2
+            $fieldUpdate = $objData->value;
+        } else {
+            // v1
+            $fieldUpdate = $objData->new_content;
+        }
+
+        if (!isset($fieldUpdate)) {
             // need more data
             $this->addMsgError('Content not found', 1);
         } else {
             $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
 
             // copy and change media sources if necessary
-            $newContent = $this->optimizmeMazenDomManipulation->checkAndCopyMediaInContent($objData->new_content, $this);
+            $newContent = $this->optimizmeMazenDomManipulation->checkAndCopyMediaInContent($fieldUpdate, $this);
 
             // save content
             $this->optimizmeMazenUtils->saveObjField($idPost, $field, $type, $newContent, $this, $storeViewId);
@@ -227,11 +258,20 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
      */
     public function updateObjectShortDescription($idPost, $objData, $type, $field)
     {
+        if (isset($objData->value)) {
+            // v2
+            $fieldUpdate = $objData->value;
+        } else {
+            // v1
+            $fieldUpdate = $objData->new_short_description;
+        }
+
         $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
-        $this->optimizmeMazenUtils->saveObjField($idPost, $field, $type, strip_tags($objData->new_short_description), $this, $storeViewId);
+        $this->optimizmeMazenUtils->saveObjField($idPost, $field, $type, strip_tags($fieldUpdate), $this, $storeViewId);
     }
 
     /**
+     * @deprecated 1.0.0
      * @param $idObj
      * @param $objData
      * @param $tag
@@ -260,8 +300,8 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-
     /**
+     * @deprecated 1.0.0
      * @param $idObj
      * @param $objData
      * @param $tag
@@ -364,14 +404,40 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
      * @param $idPost
      * @param $objData
      */
+    public function updateObjectMetaTitle($idPost, $objData, $type, $field)
+    {
+        if (isset($objData->value)) {
+            // v2
+            $fieldUpdate = $objData->value;
+        } else {
+            // v1
+            $fieldUpdate = $objData->meta_title;
+        }
+
+        $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
+        $this->optimizmeMazenUtils->saveObjField($idPost, $field, $type, $fieldUpdate, $this, $storeViewId);
+    }
+
+    /**
+     * @param $idPost
+     * @param $objData
+     */
     public function updateObjectMetaDescription($idPost, $objData, $type, $field)
     {
+        if (isset($objData->value)) {
+            // v2
+            $fieldUpdate = $objData->value;
+        } else {
+            // v1
+            $fieldUpdate = $objData->meta_description;
+        }
+
         $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
         $this->optimizmeMazenUtils->saveObjField(
             $idPost,
             $field,
             $type,
-            $objData->meta_description,
+            $fieldUpdate,
             $this,
             $storeViewId
         );
@@ -381,26 +447,24 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
      * @param $idPost
      * @param $objData
      */
-    public function updateObjectMetaTitle($idPost, $objData, $type, $field)
-    {
-        $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
-        $this->optimizmeMazenUtils->saveObjField($idPost, $field, $type, $objData->meta_title, $this, $storeViewId);
-    }
-
-    /**
-     * @param $idPost
-     * @param $objData
-     */
     public function updateObjectStatus($idPost, $objData, $type, $field)
     {
-        $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
-        if (isset($objData->is_publish) && $objData->is_publish == 1) {
-            $objData->is_publish = 1;
+        if (isset($objData->value)) {
+            // v2
+            $fieldUpdate = $objData->value;
         } else {
-            $objData->is_publish = 2;
+            // v1
+            $fieldUpdate = $objData->is_publish;
         }
 
-        $this->optimizmeMazenUtils->saveObjField($idPost, $field, $type, $objData->is_publish, $this, $storeViewId, 1);
+        $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
+        if (isset($fieldUpdate) && $fieldUpdate == 1) {
+            $fieldUpdate = 1;
+        } else {
+            $fieldUpdate = 0;
+        }
+
+        $this->optimizmeMazenUtils->saveObjField($idPost, $field, $type, $fieldUpdate, $this, $storeViewId, 1);
     }
 
     /**
@@ -415,10 +479,18 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
      */
     public function updateObjectSlug($idPost, $objData, $type, $field)
     {
+        if (isset($objData->value)) {
+            // v2
+            $fieldUpdate = $objData->value;
+        } else {
+            // v1
+            $fieldUpdate = $objData->new_slug;
+        }
+
         if (!is_numeric($idPost)) {
             // need more data
             $this->addMsgError('ID object missing');
-        } elseif ($objData->new_slug == '') {
+        } elseif ($fieldUpdate == '') {
             // no empty
             $this->addMsgError('This field is required');
         } else {
@@ -440,7 +512,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
                 $idPost,
                 $field,
                 $type,
-                $objData->new_slug,
+                $fieldUpdate,
                 $this,
                 $storeViewId
             );
@@ -498,17 +570,131 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
      */
     public function updateObjectReference($idPost, $objData, $type, $field)
     {
+        if (isset($objData->value)) {
+            // v2
+            $fieldUpdate = $objData->value;
+        } else {
+            // v1
+            $fieldUpdate = $objData->new_reference;
+        }
+
         $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
         $this->optimizmeMazenUtils->saveObjField(
             $idPost,
             $field,
             $type,
-            $objData->new_reference,
+            $fieldUpdate,
             $this,
             $storeViewId,
             1
         );
     }
+
+    /**
+     * @param $idObj : id (from product / page...)
+     * @param $objData : post data from JWT
+     * @param $type : Product/Page...
+     * @param $field : field to update in DB
+     * @param $tag : hx/img/a
+     * @param string $attr : attribute to update (optionnal, ex: target for <a> tag )
+     */
+    public function changeSomeContentInTag($idObj, $objData, $type, $field, $tag, $attr = '')
+    {
+        /* @var $node \DOMElement */
+        $boolSave = 0;
+
+        if (!is_numeric($idObj)) {
+            // need more data
+            $this->addMsgError('ID product not sent', 1);
+        } else {
+            $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
+
+            $nodes = $this->optimizmeMazenUtils->optMazenGetNodesFromContent(
+                $idObj,
+                $objData,
+                $tag,
+                $type,
+                $field,
+                $this->optimizmeMazenDomManipulation
+            );
+
+            if ($nodes->length > 0) {
+
+                $this->returnAjax['success'] = array();
+                $this->returnAjax['error'] = array();
+
+                // Hx
+                if ($tag == 'h1' || $tag == 'h2' || $tag == 'h3' || $tag == 'h4' || $tag == 'h5' || $tag == 'h6') {
+                    $boolSave = $this->loopNodesChangeValues($nodes, $objData->value);
+                }
+
+                // img  ou a
+                if ($tag == 'img' || $tag == 'a') {
+                    $boolSave = $this->loopNodesChangeValues($nodes, $objData->value, $attr);
+                }
+            }
+
+            if ($boolSave == 1) {
+                // action done: save new content
+                // root span to remove
+                $newContent = $this->optimizmeMazenDomManipulation->getHtmlFromDom();
+
+                // update
+                $this->optimizmeMazenUtils->saveObjField($idObj, $field, $type, $newContent, $this, $storeViewId);
+            } else {
+                // nothing done
+                $this->addMsgError('Nothing was modified.');
+            }
+        }
+    }
+
+
+    /**
+     * @param $nodes
+     * @param $value
+     * @param string $attr
+     * @return int
+     */
+    public function loopNodesChangeValues($nodes, $value, $attr = '') {
+        $boolSave = 0;
+        $cpt = 0;
+
+        // other strings to array (for bulk mode)
+        if (!is_array($value)) {
+            $value = array($value);
+        }
+
+        foreach ($nodes as $node) {
+            if (is_array($value) && isset($value[$cpt])) {
+                // change
+                array_push($this->returnAjax['success'], $value[$cpt]);
+                if ($attr != '') {
+                    $newVal = utf8_encode($value[$cpt]);
+                    if (trim($newVal) == '') {
+                        $node->removeAttribute($attr);
+                    } else {
+                        $node->setAttribute($attr, $newVal);
+                    }
+                } else {
+                    $node->nodeValue = $value[$cpt];
+                }
+                $boolSave = 1;
+            } else {
+                array_push($this->returnAjax['error'], 'Error push element: element ['. $cpt .'] not set in data value');
+            }
+            $cpt++;
+        }
+
+        // when too much elements (not enough tags in content compared to data in JWT)
+        if ($cpt < count($value)) {
+            for ($i = $cpt; $i < count($value); $i++){
+                array_push($this->returnAjax['error'], 'Too much elements: '. $value[$i]);
+            }
+        }
+
+        return $boolSave;
+    }
+
 
     ////////////////////////////////////////////////
     //              PRODUCT CATEGORIES
@@ -645,27 +831,29 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
         $url = $this->pageHelper->getPageUrl($idPost);
 
         if ($page->getPageId() != '') {
-            // is content in "row" for beeing inserted in mazen-dev app
-            if (trim($page->getContent()) != '') {
+            /*
+            // is content in "row" for beeing inserted in mazen-dev appif (trim($page->getContent()) != '') {
                 if (!stristr($page->getContent(), '<div class="row')) {
                     $page->setContent('<div class="row ui-droppable"><div class="col-md-12 col-sm-12 col-xs-12 column"><div class="ge-content ge-content-type-tinymce" data-ge-content-type="tinymce">'. $page->getContent() .'</div></div></div>');
                 }
             }
+            */
 
             // load and return page data
-            $this->returnAjax['post'] = [
+            $this->returnAjax['page'] = [
+                'id' => (int)$page->getId(),
                 'title' => $page->getTitle(),
                 'short_description' => $page->getContentHeading(),
                 'content' => $page->getContent(),
                 'slug' => $page->getIdentifier(),
                 'url' => $url,
-                'publish' => $page->getIsActive(),
+                'publish' => (int)$page->getIsActive(),
                 'meta_title' => $page->getMetaTitle(),
                 'meta_description' => $page->getMetaDescription()
             ];
 
             for ($i = 1; $i < 7; $i++) {
-                $this->returnAjax['post']['h'. $i] = $this->optimizmeMazenUtils->optMazenGetNodesFromContent(
+                $this->returnAjax['page']['h'. $i] = $this->optimizmeMazenUtils->optMazenGetNodesFromContent(
                     $idPost,
                     $objData,
                     'h'. $i,

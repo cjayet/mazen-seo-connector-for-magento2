@@ -95,7 +95,7 @@ class OptimizmeMazenDomManipulation extends \Magento\Framework\App\Helper\Abstra
         $this->domDocument->loadHTML('<span>'.$content.'</span>');
         libxml_clear_errors();
 
-        // get all images in post content
+        // get all tags in content
         $xp    = new \DOMXPath($this->domDocument);
         $nodes = $xp->query('//'.$tag);
         return $nodes;
