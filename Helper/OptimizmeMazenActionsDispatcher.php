@@ -56,7 +56,7 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
             case 'update':
                 if (isset($data->type) && $data->type != '') {
                     if (!is_numeric($postId)) {
-                        $optimizmeMazenAction->addMsgError('ID not specified or invalid');
+                        $optimizmeMazenAction->addMsgError('id not specified or invalid, need a numeric');
                     } else {
                         if ($data->type == 'product') {
                             if ($data->field == 'title') {

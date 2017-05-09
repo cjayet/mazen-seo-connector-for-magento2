@@ -24,6 +24,7 @@ class Categorysaveafter implements ObserverInterface
 
     public function execute(\Magento\Framework\Event\Observer $observer)
     {
+        /*
         $category = $observer->getCategory();  // get category object
 
         // default store view id
@@ -59,5 +60,6 @@ class Categorysaveafter implements ObserverInterface
             $data,
             1
         );
+        */
     }
 }

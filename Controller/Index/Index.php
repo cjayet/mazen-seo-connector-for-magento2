@@ -16,14 +16,13 @@ use Firebase\JWT\JWT;
  */
 class Index extends \Magento\Framework\App\Action\Action
 {
+    private $optimizmeActionDispatcher;
     private $optimizmeAction;
     private $optimizmeUtils;
-    private $optimizmeActionDispatcher;
+    private $optimizmeJwt;
     private $optimizmeJsonMessages;
 
-    private $returnResult;
     private $boolNoAction;
-    private $optimizmeMazenJwtSecret;
 
     const OPTIMIZME_MAZEN_URL_HOOK = 'https://mazen-app.com/mazen-webhook/logger.php';
     const OPTIMIZME_MAZEN_VERSION = '0.9.1';
@@ -33,6 +32,8 @@ class Index extends \Magento\Framework\App\Action\Action
      * @param Context $context
      * @param \Optimizme\Mazen\Helper\OptimizmeMazenActionsDispatcher $optimizmeMazenActionDispatcher
      * @param \Optimizme\Mazen\Helper\OptimizmeMazenActions $optimizmeMazenAction
+     * @param \Optimizme\Mazen\Helper\OptimizmeMazenUtils $optimizmeMazenUtils
+     * @param \Optimizme\Mazen\Helper\OptimizmeMazenJwt $optimizmeMazenJwt
      * @param \Optimizme\Mazen\Helper\OptimizmeMazenJsonMessages $optimizmeJsonMessages
      */
     public function __construct(
@@ -40,15 +41,15 @@ class Index extends \Magento\Framework\App\Action\Action
         \Optimizme\Mazen\Helper\OptimizmeMazenActionsDispatcher $optimizmeMazenActionDispatcher,
         \Optimizme\Mazen\Helper\OptimizmeMazenActions $optimizmeMazenAction,
         \Optimizme\Mazen\Helper\OptimizmeMazenUtils $optimizmeMazenUtils,
+        \Optimizme\Mazen\Helper\OptimizmeMazenJwt $optimizmeMazenJwt,
         \Optimizme\Mazen\Helper\OptimizmeMazenJsonMessages $optimizmeJsonMessages
     ) {
-        $this->optimizmeJsonMessages = $optimizmeJsonMessages;
         $this->optimizmeActionDispatcher = $optimizmeMazenActionDispatcher;
         $this->optimizmeAction = $optimizmeMazenAction;
         $this->optimizmeUtils = $optimizmeMazenUtils;
+        $this->optimizmeJwt = $optimizmeMazenJwt;
+        $this->optimizmeJsonMessages = $optimizmeJsonMessages;
         $this->boolNoAction = 0;
-        $this->optimizmeMazenJwtSecret = '';
-        $this->returnResult = [];
 
         parent::__construct($context);
     }
@@ -59,8 +60,8 @@ class Index extends \Magento\Framework\App\Action\Action
     public function execute()
     {
         // load JWT
-        $this->optimizmeMazenJwtSecret = $this->optimizmeUtils->getJwtKey();
         $isDataFormMazen = false;
+        $doAction = 0;
         $getRequestDataOtpme = $this->getRequest()->getParam('data_optme');
 
         if (isset($getRequestDataOtpme) && $getRequestDataOtpme != '') {
@@ -78,36 +79,34 @@ class Index extends \Magento\Framework\App\Action\Action
         }
 
         if (isset($requestDataOptme) && $requestDataOptme != '' && $isDataFormMazen == true) {
-            $doAction = 1;
             $jsonData = json_decode($requestDataOptme);
-            if (!isset($jsonData->data_optme) || $jsonData->data_optme == '') {
-                // nothing to do
-                $doAction = 0;
-            } else {
-                if ($this->optimizmeUtils->optMazenIsJwt($jsonData->data_optme)) {
+            if (isset($jsonData->data_optme) && $jsonData->data_optme != '') {
+                if ($this->optimizmeJwt->isJwt($jsonData->data_optme)) {
                     // JWT
-                    if (!isset($this->optimizmeMazenJwtSecret) || $this->optimizmeMazenJwtSecret == '') {
-                        $msg = 'JSON Web Token not defined, this CMS is not registered.';
-                        $this->optimizmeJsonMessages->setMsgReturn($msg, $this->returnResult, 'danger');
-                        $doAction = 0;
-                    } else {
-                        try {
-                            // try decode JSON Web Token
-                            $decoded = JWT::decode($jsonData->data_optme, $this->optimizmeMazenJwtSecret, ['HS256']);
-                            $dataOptimizme = $decoded;
-                        } catch (\Firebase\JWT\SignatureInvalidException $e) {
-                            $msg = 'JSON Web Token not decoded properly, secret may be not correct';
-                            $this->optimizmeJsonMessages->setMsgReturn($msg, $this->returnResult, 'danger');
-                            $doAction = 0;
+                    $idProject = $this->optimizmeJwt->getIdProject($jsonData->data_optme);
+                    if ($idProject != 0) {
+                        $jwtSecret = $this->optimizmeJwt->getJwtKey($idProject);
+                        if ($jwtSecret != '') {
+                            try {
+                                // try decode JSON Web Token
+                                $decoded = JWT::decode($jsonData->data_optme, $jwtSecret, ['HS256']);
+                                $dataOptimizme = $decoded;
+                                $doAction = 1;
+                            } catch (\Firebase\JWT\SignatureInvalidException $e) {
+                                $msg = 'JSON Web Token not decoded properly, secret may be not correct';
+                                $this->optimizmeJsonMessages->setMsgReturn($msg, 'danger');
+                            }
                         }
                     }
+
                 } else {
                     // simple JSON, only for "register_cms" action
                     $dataOptimizme = $jsonData->data_optme;
                     if (!is_object($dataOptimizme) || $dataOptimizme->action != 'register_cms') {
                         $msg = 'JSON Web Token needed';
-                        $this->optimizmeJsonMessages->setMsgReturn($msg, $this->returnResult, 'danger');
-                        $doAction = 0;
+                        $this->optimizmeJsonMessages->setMsgReturn($msg, 'danger');
+                    } else {
+                        $doAction = 1;
                     }
                 }
             }
@@ -129,7 +128,7 @@ class Index extends \Magento\Framework\App\Action\Action
                 if ($dataOptimizme->action == '') {
                     // no action specified
                     $msg = 'No action defined';
-                    $this->optimizmeJsonMessages->setMsgReturn($msg, $this->returnResult, 'danger');
+                    $this->optimizmeJsonMessages->setMsgReturn($msg, 'danger');
                 } else {
                     // action to do
                     $this->boolNoAction = $this->optimizmeActionDispatcher->dispatchMazenAction(
@@ -142,15 +141,13 @@ class Index extends \Magento\Framework\App\Action\Action
                     if ($this->boolNoAction == 1) {
                         // no action done
                         $msg = 'No action found!';
-                        $this->optimizmeJsonMessages->setMsgReturn($msg, $this->returnResult, 'danger');
+                        $this->optimizmeJsonMessages->setMsgReturn($msg, 'danger');
                     } else {
                         // action done
                         if (is_array($this->optimizmeAction->tabErrors) && !empty($this->optimizmeAction->tabErrors)) {
-                            $this->returnResult['result'] = 'danger';
                             $msg = 'One or several errors have been raised: ';
                             $this->optimizmeJsonMessages->setMsgReturn(
                                 $msg,
-                                $this->returnResult,
                                 'danger',
                                 $this->optimizmeAction->tabErrors
                             );
@@ -159,13 +156,12 @@ class Index extends \Magento\Framework\App\Action\Action
                         ) {
                             // ajax to return - encode data
                             $this->optimizmeJsonMessages->setDataReturn(
-                                $this->optimizmeAction->returnAjax,
-                                $this->returnResult
+                                $this->optimizmeAction->returnAjax
                             );
                         } else {
                             // no error, OK !
                             $msg = 'Action done!';
-                            $this->optimizmeJsonMessages->setMsgReturn($msg, $this->returnResult, 'success');
+                            $this->optimizmeJsonMessages->setMsgReturn($msg,'success');
                         }
                     }
                 }

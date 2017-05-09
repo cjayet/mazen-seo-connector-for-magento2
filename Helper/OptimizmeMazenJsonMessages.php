@@ -32,8 +32,9 @@ class OptimizmeMazenJsonMessages extends \Magento\Framework\App\Helper\AbstractH
      * @param string $typeResult
      * @param array $msgComplementaires
      */
-    public function setMsgReturn($msg, $res, $typeResult = 'success', $msgComplementaires = [])
+    public function setMsgReturn($msg, $typeResult = 'success', $msgComplementaires = [])
     {
+        $res = [];
         $res['result'] = $typeResult;
         $res['message'] = $msg;
         if (is_array($msgComplementaires) && !empty($msgComplementaires)) {
@@ -51,8 +52,9 @@ class OptimizmeMazenJsonMessages extends \Magento\Framework\App\Helper\AbstractH
      * @param $tabData
      * @param string $typeResult : success, info, warning, danger
      */
-    public function setDataReturn($tabData, $res, $typeResult = 'success')
+    public function setDataReturn($tabData, $typeResult = 'success')
     {
+        $res = [];
         $res['result'] = $typeResult;
 
         if (is_array($tabData) && !empty($tabData)) {

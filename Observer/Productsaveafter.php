@@ -26,6 +26,7 @@ class Productsaveafter implements ObserverInterface
      */
     public function execute(\Magento\Framework\Event\Observer $observer)
     {
+        /*
         $product = $observer->getProduct();  // get product object
 
         // default store view id
@@ -61,5 +62,6 @@ class Productsaveafter implements ObserverInterface
             $data,
             1
         );
+        */
     }
 }

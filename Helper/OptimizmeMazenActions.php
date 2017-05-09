@@ -23,6 +23,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
     private $pageRepository;
     private $pageHelper;
     private $optimizmeMazenUtils;
+    private $optimizmeMazenJwt;
     private $optimizmeMazenRedirections;
     private $optimizmeMazenDomManipulation;
 
@@ -39,6 +40,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
      * @param \Magento\Catalog\Model\CategoryRepository $categoryRepository
      * @param \Magento\Cms\Model\PageRepository $pageRepository
      * @param OptimizmeMazenUtils $optimizmeMazenUtils
+     * @param OptimizmeMazenJwt $optimizmeMazenJwt
      * @param OptimizmeMazenRedirections $optimizmeMazenRedirections
      */
     public function __construct(
@@ -54,6 +56,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Cms\Model\PageRepository $pageRepository,
         \Magento\Cms\Helper\Page $pageHelper,
         \Optimizme\Mazen\Helper\OptimizmeMazenUtils $optimizmeMazenUtils,
+        \Optimizme\Mazen\Helper\OptimizmeMazenJwt $optimizmeMazenJwt,
         \Optimizme\Mazen\Helper\OptimizmeMazenRedirections $optimizmeMazenRedirections,
         \Optimizme\Mazen\Helper\OptimizmeMazenDomManipulation $optimizmeMazenDomManipulation
     ) {
@@ -69,6 +72,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
         $this->pageRepository = $pageRepository;
         $this->pageHelper = $pageHelper;
         $this->optimizmeMazenUtils = $optimizmeMazenUtils;
+        $this->optimizmeMazenJwt = $optimizmeMazenJwt;
         $this->optimizmeMazenRedirections = $optimizmeMazenRedirections;
         $this->optimizmeMazenDomManipulation = $optimizmeMazenDomManipulation;
 
@@ -243,7 +247,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
             if (count($this->tabErrors) == 0) {
                 $this->returnAjax = [
                     'message' => 'Content saved successfully!',
-                    'id_post' => $idPost,
+                    'id' => $idPost,
                     'content' => $newContent
                 ];
             }
@@ -282,9 +286,9 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
     {
         if (!is_numeric($idObj)) {
             // need more data
-            $this->addMsgError('ID product not sent', 1);
+            $this->addMsgError('Id '. $type .' missing', 1);
         } else {
-            $tabTags = $this->optimizmeMazenUtils->optMazenGetNodesFromContent(
+            $tabTags = $this->optimizmeMazenUtils->getNodesFromContent(
                 $idObj,
                 $objData,
                 $tag,
@@ -317,14 +321,14 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
         $boolModified = 0;
         if (!is_numeric($idObj)) {
             // need more data
-            $this->addMsgError('ID product not sent', 1);
+            $this->addMsgError('Id '. $type .' missing', 1);
         } elseif ($objData->initial_content == '') {
             // need more data
             $this->addMsgError('No initial content found, action canceled', 1);
         } else {
             $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
 
-            $nodes = $this->optimizmeMazenUtils->optMazenGetNodesFromContent(
+            $nodes = $this->optimizmeMazenUtils->getNodesFromContent(
                 $idObj,
                 $objData,
                 $tag,
@@ -489,7 +493,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
 
         if (!is_numeric($idPost)) {
             // need more data
-            $this->addMsgError('ID object missing');
+            $this->addMsgError('Id '. $type .' missing');
         } elseif ($fieldUpdate == '') {
             // no empty
             $this->addMsgError('This field is required');
@@ -605,11 +609,11 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
 
         if (!is_numeric($idObj)) {
             // need more data
-            $this->addMsgError('ID product not sent', 1);
+            $this->addMsgError('ID '. $type .' missing', 1);
         } else {
             $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
 
-            $nodes = $this->optimizmeMazenUtils->optMazenGetNodesFromContent(
+            $nodes = $this->optimizmeMazenUtils->getNodesFromContent(
                 $idObj,
                 $objData,
                 $tag,
@@ -806,7 +810,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
 
                 if ($page->getTitle() != '') {
                     $prodReturn = [
-                        'ID' => $page->getPageId(),
+                        'id' => $page->getPageId(),
                         'title' => $page->getTitle(),
                         'publish' => $page->getIsActive(),
                         'url' => $url
@@ -853,7 +857,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
             ];
 
             for ($i = 1; $i < 7; $i++) {
-                $this->returnAjax['page']['h'. $i] = $this->optimizmeMazenUtils->optMazenGetNodesFromContent(
+                $this->returnAjax['page']['h'. $i] = $this->optimizmeMazenUtils->getNodesFromContent(
                     $idPost,
                     $objData,
                     'h'. $i,
@@ -921,12 +925,13 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
     {
         if ($this->user->authenticate($objData->login, $objData->password)) {
             // auth ok! we can generate token
-            $keyJWT = $this->optimizmeMazenUtils->generateKeyForJwt();
+            $keyJWT = $this->optimizmeMazenJwt->generateKeyForJwt();
 
             // all is ok
             $this->returnAjax = [
                 'message' => 'JSON Token generated in Magento.',
-                'jws_token' => $keyJWT,
+                'jws_token' => $keyJWT['token'],
+                'id_project' => $keyJWT['id_project'],
                 'cms' => 'magento',
                 'site_domain' => $objData->url_cible,
                 'jwt_disable' => 1

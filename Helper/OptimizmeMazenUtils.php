@@ -10,19 +10,15 @@ use Firebase\JWT\JWT;
  */
 class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
 {
-    protected $scopeConfig;
+
     private $storeManager;
     private $wysiwygDirectory;
     private $directoryList;
-    private $resourceConfig;
-    private $cacheTypeList;
-    private $cacheFrontendPool;
     private $productRepository;
     private $categoryRepository;
     private $pageRepository;
     private $io;
     private $resourceModel;
-    //private $optimizmeMazenDomManipulation;
     private $urlRewrite;
 
     /**
@@ -30,10 +26,6 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
      * @param \Magento\Store\Model\StoreManagerInterface $storeManager
      * @param \Magento\Cms\Model\Wysiwyg\Config $wysiwyg
      * @param \Magento\Framework\App\Filesystem\DirectoryList $directory_list
-     * @param \Magento\Config\Model\ResourceModel\Config $resourceConfig
-     * @param \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
-     * @param \Magento\Framework\App\Cache\TypeListInterface $cacheTypeList
-     * @param \Magento\Framework\App\Cache\Frontend\Pool $cacheFrontendPool
      * @param \Magento\Catalog\Model\ProductRepository $productRepository
      * @param \Magento\Catalog\Model\CategoryRepository $categoryRepository
      * @param \Magento\Cms\Model\PageRepository $pageRepository
@@ -45,31 +37,21 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Store\Model\StoreManagerInterface $storeManager,
         \Magento\Cms\Model\Wysiwyg\Config $wysiwyg,
         \Magento\Framework\App\Filesystem\DirectoryList $directory_list,
-        \Magento\Config\Model\ResourceModel\Config $resourceConfig,
-        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
-        \Magento\Framework\App\Cache\TypeListInterface $cacheTypeList,
-        \Magento\Framework\App\Cache\Frontend\Pool $cacheFrontendPool,
         \Magento\Catalog\Model\ProductRepository $productRepository,
         \Magento\Catalog\Model\CategoryRepository $categoryRepository,
         \Magento\Cms\Model\PageRepository $pageRepository,
         \Magento\Framework\Filesystem\Io\File $io,
         \Magento\Catalog\Model\ResourceModel\Product $resourceModel,
-        //\Optimizme\Mazen\Helper\OptimizmeMazenDomManipulation $optimizmeMazenDomManipulation
         \Magento\UrlRewrite\Model\UrlRewrite $urlRewrite
     ) {
         $this->storeManager      = $storeManager;
         $this->wysiwygDirectory  = $wysiwyg::IMAGE_DIRECTORY;
         $this->directoryList     = $directory_list;
-        $this->resourceConfig    = $resourceConfig;
-        $this->scopeConfig       = $scopeConfig;
-        $this->cacheTypeList     = $cacheTypeList;
-        $this->cacheFrontendPool = $cacheFrontendPool;
         $this->productRepository = $productRepository;
         $this->categoryRepository = $categoryRepository;
         $this->pageRepository = $pageRepository;
         $this->io                = $io;
         $this->resourceModel                = $resourceModel;
-        //$this->optimizmeMazenDomManipulation = $optimizmeMazenDomManipulation;
         $this->urlRewrite = $urlRewrite;
     }//end __construct()
 
@@ -220,7 +202,7 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
     {
         if (!is_numeric($idProduct)) {
             // need more data
-            $objAction->addMsgError('ID element missing');
+            $objAction->addMsgError('Id '. $type .' missing');
         } elseif ($isRequired == 1 && ($value == '' && $value !== 0)) {
             // no empty
             $objAction->addMsgError('This field is required');
@@ -277,122 +259,6 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
     }//end getStoreBaseUrl()
 
     /**
-     * @param int $length
-     * @return string
-     */
-    public function generateKeyForJwt($length = 64)
-    {
-        // generate
-        $key = substr(
-            str_shuffle(
-                str_repeat(
-                    $x = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
-                    ceil(
-                        $length / strlen($x)
-                    )
-                )
-            ),
-            1,
-            $length
-        );
-
-        // save
-        $this->saveJwtKey($key);
-
-        return $key;
-    }//end generateKeyForJwt()
-
-    /**
-     * Save JWT key
-     *
-     * @param str $keyJWT is the key to save
-     */
-    public function saveJwtKey($keyJWT)
-    {
-        $this->resourceConfig->saveConfig(
-            'optimizme/jwt/key',
-            $keyJWT,
-            'default',
-            0
-        );
-
-        // flush cache config to update key
-        $this->cacheConfigClean();
-    }//end saveJwtKey()
-
-    /**
-     * Get saved JWT key
-     *
-     * @return mixed|string
-     */
-    public function getJwtKey()
-    {
-        $key = $this->scopeConfig->getValue('optimizme/jwt/key', 'default', 0);
-        if ($key === null) {
-            $key = '';
-        }
-
-        return $key;
-    }//end getJwtKey()
-
-    /**
-     * Is param a JWT?
-     *
-     * @param string $s to analyze
-     *
-     * @return bool
-     */
-    public function optMazenIsJwt($s)
-    {
-        if (is_array($s)) {
-            return false;
-        }
-
-        if (is_object($s)) {
-            return false;
-        }
-
-        if (substr_count($s, '.') != 2) {
-            return false;
-        }
-
-        if (strstr($s, '{')) {
-            return false;
-        }
-
-        if (strstr($s, '}')) {
-            return false;
-        }
-
-        if (strstr($s, ':')) {
-            return false;
-        }
-
-        // all tests OK, seems JWT
-        return true;
-    }//end optMazenIsJwt()
-
-    /**
-     * Clean config cache
-     */
-    public function cacheConfigClean()
-    {
-        try {
-            $types = ['config'];
-            foreach ($types as $type) {
-                $this->cacheTypeList->cleanType($type);
-            }
-
-            foreach ($this->cacheFrontendPool as $cacheFrontend) {
-                $cacheFrontend->getBackend()->clean();
-            }
-        } catch (\Exception $e) {
-            // error cleaning cache
-            unset($e);
-        }
-    }//end cacheConfigClean()
-
-    /**
      * Send data to MAZEN with curl
      * @param $url
      * @param $data
@@ -408,7 +274,7 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
         $data['website'] = $urlWebsite;
 
         if ($toJWT == 1) {
-            $key = $this->getJwtKey();
+            $key = $this->getJwtKey();  // TODO dynamical
             $data = JWT::encode($data, $key);
         } else {
             $data = json_encode($data);
@@ -450,7 +316,7 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
      * @param int $tab : return content in an array, or full nodes object
      * @return array
      */
-    public function optMazenGetNodesFromContent($idObj, $objData, $tag, $type, $field, $optDom, $tab = 0)
+    public function getNodesFromContent($idObj, $objData, $tag, $type, $field, $optDom, $tab = 0)
     {
         $storeViewId = $this->extractStoreViewFromMazenData($objData);
 
@@ -493,7 +359,7 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
      * @param string $attribute
      * @return array
      */
-    public function optMazenGetNodesFromKnownContent($optDom, $value, $tag, $attribute = '')
+    public function getNodesFromKnownContent($optDom, $value, $tag, $attribute = '')
     {
         $tabTags = [];
 
@@ -510,32 +376,6 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
             }
         }
         return $tabTags;
-    }
-
-    /**
-     * @param OptimizmeMazenDomManipulation $objDom
-     * @param $content
-     * @param $tag
-     * @param string $attribute
-     * @return array
-     */
-    public function getNodesFromContent($objDom, $content, $tag, $attribute = '')
-    {
-        if (class_exists("DOMDocument")) {
-            $doc = new \DOMDocument;
-            $nodes = $objDom->getNodesInDom($doc, $tag, $content);
-            $tabTags = array();
-            if ($nodes->length > 0) {
-                foreach ($nodes as $node) {
-                    if ($attribute != '') {
-                        array_push($tabTags, $node->getAttribute($attribute));
-                    } else {
-                        array_push($tabTags, $node->nodeValue);
-                    }
-                }
-            }
-            return $tabTags;
-        }
     }
 
     /**
@@ -583,62 +423,48 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
                 'slug' => $product->getUrlKey(),
                 'meta_title' => $product->getMetaTitle(),
                 'meta_description' => $product->getMetaDescription(),
-                'a' => $this->optMazenGetNodesFromKnownContent(
+                'a' => $this->getNodesFromKnownContent(
                     $dom,
                     $product->getDescription(),
                     'a'
                 ),
-                'img' => $this->optMazenGetNodesFromKnownContent(
+                'img' => $this->getNodesFromKnownContent(
                     $dom,
                     $product->getDescription(),
                     'img',
                     'src'
                 ),
-                'h1' => $this->optMazenGetNodesFromKnownContent(
+                'h1' => $this->getNodesFromKnownContent(
                     $dom,
                     $product->getDescription(),
                     'h1'
                 ),
-                'h2' => $this->optMazenGetNodesFromKnownContent(
+                'h2' => $this->getNodesFromKnownContent(
                     $dom,
                     $product->getDescription(),
                     'h2'
                 ),
-                'h3' => $this->optMazenGetNodesFromKnownContent(
+                'h3' => $this->getNodesFromKnownContent(
                     $dom,
                     $product->getDescription(),
                     'h3'
                 ),
-                'h4' => $this->optMazenGetNodesFromKnownContent(
+                'h4' => $this->getNodesFromKnownContent(
                     $dom,
                     $product->getDescription(),
                     'h4'
                 ),
-                'h5' => $this->optMazenGetNodesFromKnownContent(
+                'h5' => $this->getNodesFromKnownContent(
                     $dom,
                     $product->getDescription(),
                     'h5'
                 ),
-                'h6' => $this->optMazenGetNodesFromKnownContent(
+                'h6' => $this->getNodesFromKnownContent(
                     $dom,
                     $product->getDescription(),
                     'h6'
                 ),
             ];
-
-            // informations from product content
-            /*
-            $tabPossibleContents['a'] =  $this->optMazenGetNodesFromContent(
-                $product->getId(),
-                $objData,
-                'h'. $i,
-                'Product',
-                'Description',
-                $this->optimizmeMazenDomManipulation,
-                1
-            );
-            */
-
 
             // add non required fields
             foreach ($tabPossibleContents as $key => $value) {
