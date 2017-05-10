@@ -10,7 +10,7 @@ use Firebase\JWT\JWT;
  */
 class OptimizmeMazenJwt extends \Magento\Framework\App\Helper\AbstractHelper
 {
-    protected $scopeConfig;
+    public $scopeConfig;
     private $resourceConfig;
     private $optimizmeJsonMessages;
     private $cacheTypeList;
@@ -30,13 +30,13 @@ class OptimizmeMazenJwt extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Framework\App\Cache\Frontend\Pool $cacheFrontendPool,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
         \Optimizme\Mazen\Helper\OptimizmeMazenJsonMessages $optimizmeJsonMessages
-    )
-    {
-        $this->resourceConfig    = $resourceConfig;
-        $this->cacheTypeList     = $cacheTypeList;
+    ) {
+    
+        $this->resourceConfig = $resourceConfig;
+        $this->cacheTypeList = $cacheTypeList;
         $this->cacheFrontendPool = $cacheFrontendPool;
-        $this->scopeConfig       = $scopeConfig;
-        $this->optimizmeJsonMessages    = $optimizmeJsonMessages;
+        $this->scopeConfig = $scopeConfig;
+        $this->optimizmeJsonMessages = $optimizmeJsonMessages;
     }
 
     /**
@@ -108,12 +108,11 @@ class OptimizmeMazenJwt extends \Magento\Framework\App\Helper\AbstractHelper
         );
         $this->cacheConfigClean();
 
-        $tab = array(
+        $tab = [
             'token' => $key,
             'id_project' => $idProject
-        );
+        ];
         return $tab;
-
     }//end generateKeyForJwt()
 
     /**
@@ -182,5 +181,4 @@ class OptimizmeMazenJwt extends \Magento\Framework\App\Helper\AbstractHelper
             unset($e);
         }
     }//end cacheConfigClean()
-
 }//end class

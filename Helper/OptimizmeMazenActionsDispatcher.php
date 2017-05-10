@@ -18,7 +18,6 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
     {
         $boolNoAction = 0;
         switch ($data->action) {
-
             // init dialog
             case 'register_cms':
                 $optimizmeMazenAction->registerCMS($data);
@@ -28,7 +27,6 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
                     \Optimizme\Mazen\Controller\Index\Index::OPTIMIZME_MAZEN_VERSION
                 );
                 break;
-
 
             // api v2
             case 'get':
@@ -43,10 +41,12 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
                         if (isset($data->id) && is_numeric($data->id)) {
                             $optimizmeMazenAction->getPage($postId, $data);
                         } else {
-                            $optimizmeMazenAction->getPages();
+                            $optimizmeMazenAction->getPages($data);
                         }
+                    } elseif ($data->type == 'all') {
+                        $optimizmeMazenAction->getAll($data);
                     } else {
-                        $optimizmeMazenAction->addMsgError('Not allowed type to get');
+                        $optimizmeMazenAction->addMsgError('Not allowed type '. $data->type .' to get');
                     }
                 } else {
                     $optimizmeMazenAction->addMsgError('No type specified for get');

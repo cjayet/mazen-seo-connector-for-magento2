@@ -17,9 +17,8 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
     private $productRepository;
     private $categoryRepository;
     private $pageRepository;
+    private $pageHelper;
     private $io;
-    private $resourceModel;
-    private $urlRewrite;
 
     /**
      * OptimizmeMazenUtils constructor.
@@ -29,9 +28,8 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
      * @param \Magento\Catalog\Model\ProductRepository $productRepository
      * @param \Magento\Catalog\Model\CategoryRepository $categoryRepository
      * @param \Magento\Cms\Model\PageRepository $pageRepository
+     * @param \Magento\Cms\Helper\Page $pageHelper
      * @param \Magento\Framework\Filesystem\Io\File $io
-     * @param \Magento\Catalog\Model\ResourceModel\Product $resourceModel
-     * @param \Magento\UrlRewrite\Model\UrlRewrite $urlRewrite
      */
     public function __construct(
         \Magento\Store\Model\StoreManagerInterface $storeManager,
@@ -40,19 +38,17 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Catalog\Model\ProductRepository $productRepository,
         \Magento\Catalog\Model\CategoryRepository $categoryRepository,
         \Magento\Cms\Model\PageRepository $pageRepository,
-        \Magento\Framework\Filesystem\Io\File $io,
-        \Magento\Catalog\Model\ResourceModel\Product $resourceModel,
-        \Magento\UrlRewrite\Model\UrlRewrite $urlRewrite
+        \Magento\Cms\Helper\Page $pageHelper,
+        \Magento\Framework\Filesystem\Io\File $io
     ) {
-        $this->storeManager      = $storeManager;
-        $this->wysiwygDirectory  = $wysiwyg::IMAGE_DIRECTORY;
-        $this->directoryList     = $directory_list;
+        $this->storeManager = $storeManager;
+        $this->wysiwygDirectory = $wysiwyg::IMAGE_DIRECTORY;
+        $this->directoryList = $directory_list;
         $this->productRepository = $productRepository;
         $this->categoryRepository = $categoryRepository;
         $this->pageRepository = $pageRepository;
-        $this->io                = $io;
-        $this->resourceModel                = $resourceModel;
-        $this->urlRewrite = $urlRewrite;
+        $this->pageHelper = $pageHelper;
+        $this->io = $io;
     }//end __construct()
 
     /**
@@ -380,91 +376,106 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
 
     /**
      * @param OptimizmeMazenDomManipulation $dom
-     * @param $idProduct
-     * @param $storeViewId
+     * @param $type
+     * @param $object
      * @param $loadAll
      * @param array $fieldsFilter
      * @return array
      */
-    public function loadProductForMazen($dom, $idProduct, $storeViewId, $loadAll, $fieldsFilter = array())
+    public function loadObjectForMazen($dom, $type, $object, $loadAll, $fieldsFilter = [])
     {
         $tabPost = [];
 
-        // load product
-        $product = $this->productRepository->getById($idProduct, false, $storeViewId);
-
-        if ($product->getName() != '') {
-            $statusProduct = $product->getStatus();
-            if ($statusProduct == 2) {
-                $statusProduct = 0;
+        if ($object->getId() != '') {
+            // changes depends on type
+            if ($type == 'product') {
+                $urlObject = $object->getProductUrl();
+                $content = $object->getDescription();
+                $status = $object->getStatus();
+                $shortDescription = $object->getShortDescription();
+                $slug = $object->getUrlKey();
+            } else {
+                $urlObject = $this->pageHelper->getPageUrl($object->getId());
+                $content = $object->getContent();
+                $status = (int)$object->getIsActive();
+                $shortDescription = $object->getContentHeading();
+                $slug = $object->getIdentifier();
             }
 
-            // url
-            $urlProduct = $product->getProductUrl();
-            if (strstr($urlProduct, '?__')) {
-                $tabUrlProduct = explode('?__', $urlProduct);
-                $urlProduct = $tabUrlProduct[0];
+            if ($status == 2) {
+                $status = 0;
             }
 
+            //
+            if (strstr($urlObject, '?__')) {
+                $tabUrlProduct = explode('?__', $urlObject);
+                $urlObject = $tabUrlProduct[0];
+            }
 
             // minimum viable for a product
-            $tabPost =  [
-                'id' => (int)$product->getId(),
-                'id_lang' => $product->getStoreId(),
-                'title' => $product->getName(),
-                'publish' => $statusProduct,
-                'url' => $urlProduct
-            ];
+            $tabPost['id'] = (int)$object->getId();
+            if ($type == 'product') {
+                $tabPost['id_lang'] = (int)$object->getStoreId();
+                $tabPost['title'] = $object->getName();
+            } elseif ($type == 'page') {
+                $tabPost['title'] = $object->getTitle();
+            }
+            $tabPost['publish'] = (int)$status;
+            $tabPost['url'] = $urlObject;
 
+            // additional fields
             $tabPossibleContents = [
-                'reference' => $product->getSku(),
-                'short_description' => $product->getShortDescription(),
-                'content' => $product->getDescription(),
-                'slug' => $product->getUrlKey(),
-                'meta_title' => $product->getMetaTitle(),
-                'meta_description' => $product->getMetaDescription(),
+                'short_description' => $shortDescription,
+                'content' => $content,
+                'slug' => $slug,
+                'meta_title' => $object->getMetaTitle(),
+                'meta_description' => $object->getMetaDescription(),
                 'a' => $this->getNodesFromKnownContent(
                     $dom,
-                    $product->getDescription(),
+                    $content,
                     'a'
                 ),
                 'img' => $this->getNodesFromKnownContent(
                     $dom,
-                    $product->getDescription(),
+                    $content,
                     'img',
                     'src'
                 ),
                 'h1' => $this->getNodesFromKnownContent(
                     $dom,
-                    $product->getDescription(),
+                    $content,
                     'h1'
                 ),
                 'h2' => $this->getNodesFromKnownContent(
                     $dom,
-                    $product->getDescription(),
+                    $content,
                     'h2'
                 ),
                 'h3' => $this->getNodesFromKnownContent(
                     $dom,
-                    $product->getDescription(),
+                    $content,
                     'h3'
                 ),
                 'h4' => $this->getNodesFromKnownContent(
                     $dom,
-                    $product->getDescription(),
+                    $content,
                     'h4'
                 ),
                 'h5' => $this->getNodesFromKnownContent(
                     $dom,
-                    $product->getDescription(),
+                    $content,
                     'h5'
                 ),
                 'h6' => $this->getNodesFromKnownContent(
                     $dom,
-                    $product->getDescription(),
+                    $content,
                     'h6'
                 ),
             ];
+
+            if ($type == 'product') {
+                $tabPossibleContents['reference'] = $object->getSku();
+            }
 
             // add non required fields
             foreach ($tabPossibleContents as $key => $value) {
@@ -473,10 +484,10 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
                 }
             }
         }
-
-
         return $tabPost;
     }
+
+
 
     /**
      * @return array
@@ -495,27 +506,11 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
      * @param $url
      * @return array|mixed
      */
-    public function getProductSlugFromUrl($url)
+    public function getIdentifierFromUrl($url)
     {
-        //$productId = (int)$this->getRequest()->getParam('id');
-        //echo "ID:" . $productId; die;
-       // $test = new \Magento\Framework\DataObject(['table' => 'catalog_product_entity_varchar'])
-
-
-        /*
-        $oRewrite = Mage::getModel('core/url_rewrite')
-            ->setStoreId(Mage::app()->getStore()->getId())
-            ->loadByRequestPath($vPath);
-        */
-
-        //$oRewrite = $this->urlRewrite->
-
         // Get the product permalink
         $slug = explode('/', $url);
         $slug = end($slug);
-
-        //$urlBase = $this->storeManager->getStore()->getBaseUrl();
-        //$urlProduct = str_replace($urlBase, '', $url);
 
         if (strstr($slug, '.')) {
             $slug = explode('.', $slug);
@@ -523,5 +518,4 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
         }
         return $slug;
     }
-
 }//end class

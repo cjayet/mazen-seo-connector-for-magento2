@@ -26,6 +26,8 @@ class Productsaveafter implements ObserverInterface
      */
     public function execute(\Magento\Framework\Event\Observer $observer)
     {
+        // TODO send data to Mazen
+
         /*
         $product = $observer->getProduct();  // get product object
 

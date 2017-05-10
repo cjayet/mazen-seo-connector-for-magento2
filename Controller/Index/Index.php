@@ -80,6 +80,7 @@ class Index extends \Magento\Framework\App\Action\Action
 
         if (isset($requestDataOptme) && $requestDataOptme != '' && $isDataFormMazen == true) {
             $jsonData = json_decode($requestDataOptme);
+
             if (isset($jsonData->data_optme) && $jsonData->data_optme != '') {
                 if ($this->optimizmeJwt->isJwt($jsonData->data_optme)) {
                     // JWT
@@ -98,7 +99,6 @@ class Index extends \Magento\Framework\App\Action\Action
                             }
                         }
                     }
-
                 } else {
                     // simple JSON, only for "register_cms" action
                     $dataOptimizme = $jsonData->data_optme;
@@ -161,7 +161,7 @@ class Index extends \Magento\Framework\App\Action\Action
                         } else {
                             // no error, OK !
                             $msg = 'Action done!';
-                            $this->optimizmeJsonMessages->setMsgReturn($msg,'success');
+                            $this->optimizmeJsonMessages->setMsgReturn($msg, 'success');
                         }
                     }
                 }

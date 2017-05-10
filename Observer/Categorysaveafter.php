@@ -24,6 +24,8 @@ class Categorysaveafter implements ObserverInterface
 
     public function execute(\Magento\Framework\Event\Observer $observer)
     {
+        // TODO send data to Mazen
+
         /*
         $category = $observer->getCategory();  // get category object
 
