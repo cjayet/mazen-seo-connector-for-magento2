@@ -141,7 +141,6 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
         $productsReturn = [];
         $tabProducts = [];
         $tabLinkError = [];
-        $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
 
         // add fields?
         if (isset($objData->fields) && is_array($objData->fields) && !empty($objData->fields)) {
@@ -150,30 +149,31 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
             $fieldsFilter = [];
         }
 
+        // languages (store id): if nothing specified, get all
+        $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
+        if ($storeViewId === null) {
+            $tabLoopStoreId = $this->optimizmeMazenUtils->getAllStoresId();
+        } else {
+            $tabLoopStoreId = [$storeViewId];
+        }
+
         // get products list
         if (isset($objData->links) && is_array($objData->links) && !empty($objData->links)) {
-            // loop in all store views if nothing is specified
-            if ($storeViewId === null) {
-                $tabStoresId = $this->optimizmeMazenUtils->getAllStoresId();
-            } else {
-                $tabStoresId = [$storeViewId];
-            }
-
             // for each link
             foreach ($objData->links as $link) {
                 $slug = $this->optimizmeMazenUtils->getIdentifierFromUrl($link);
                 $boolLinkFound = 0;
 
-                foreach ($tabStoresId as $storeIdBoucle) {
+                foreach ($tabLoopStoreId as $storeViewIdLoop) {
                     if ($boolLinkFound == 0) {
                         $product = $this->productFactory->create()
-                            ->setStoreId($storeIdBoucle)
+                            ->setStoreId($storeViewIdLoop)
                             ->loadByAttribute('url_key', $slug);
                         if ($product && $product->getId() && is_numeric($product->getId())) {
                             $productL = $this->productRepository->getById(
                                 $product->getId(),
                                 false,
-                                $storeIdBoucle,
+                                $storeViewIdLoop,
                                 false
                             );
                             if ($productL->getId() && is_numeric($productL->getId())) {
@@ -190,20 +190,23 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
             }
         } else {
             // no link filter
-            $products = $this->productCollectionFactory->create();
-            $products->addStoreFilter($storeViewId);
+            foreach ($tabLoopStoreId as $storeViewIdLoop) {
+                $products = $this->productCollectionFactory->create();
+                $products->addStoreFilter($storeViewIdLoop);
 
-            if (!empty($products)) {
-                foreach ($products as $productBoucle) {
-                    $product = $this->productRepository->getById($productBoucle['entity_id'], false, $storeViewId);
-                    array_push($tabProducts, $product);
+                if (!empty($products)) {
+                    foreach ($products as $productBoucle) {
+                        $product = $this->productRepository->getById($productBoucle['entity_id'], false, $storeViewIdLoop);
+                        array_push($tabProducts, $product);
+                    }
                 }
             }
         }
 
+        // if products, transform to data formatted for mazen
         if (!empty($tabProducts)) {
             foreach ($tabProducts as $productBoucle) {
-                $prodReturn = $this->optimizmeMazenUtils->loadObjectForMazen(
+                $prodReturn = $this->optimizmeMazenUtils->formatObjectForMazen(
                     $this->optimizmeMazenDomManipulation,
                     'product',
                     $productBoucle,
@@ -240,7 +243,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
         $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
         $product = $this->productRepository->getById($idPost, false, $storeViewId);
 
-        $prodReturn = $this->optimizmeMazenUtils->loadObjectForMazen(
+        $prodReturn = $this->optimizmeMazenUtils->formatObjectForMazen(
             $this->optimizmeMazenDomManipulation,
             'product',
             $product,
@@ -765,39 +768,43 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
     public function getCategories($objData)
     {
         $tabResults = [];
-        $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
 
-        if (is_integer($storeViewId)) {
-            $categories = $this->categoryCollectionFactory->create()->setStoreId($storeViewId)->getData();
+        // add fields?
+        if (isset($objData->fields) && is_array($objData->fields) && !empty($objData->fields)) {
+            $fieldsFilter = $objData->fields;
         } else {
-            $categories = $this->categoryCollectionFactory->create()->getData();
+            $fieldsFilter = [];
         }
 
-        if (!empty($categories)) {
-            foreach ($categories as $categoryLoop) {
-                // get category details
-                $category = $this->categoryRepository->get($categoryLoop['entity_id'], $storeViewId);
+        // languages (store id): if nothing specified, get all
+        $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
+        if ($storeViewId === null) {
+            $tabLoopStoreId = $this->optimizmeMazenUtils->getAllStoresId();
+        } else {
+            $tabLoopStoreId = [$storeViewId];
+        }
 
-                // don't get root category
-                if ($category->getLevel() > 0) {
-                    $categoryStatus = $category->getIsActive();
-                    if ($categoryStatus == 2) {
-                        $categoryStatus = 0;
+        foreach ($tabLoopStoreId as $storeViewIdLoop) {
+            $categories = $this->categoryCollectionFactory->create()->setStoreId($storeViewIdLoop)->getData();
+
+            if (!empty($categories)) {
+                foreach ($categories as $categoryLoop) {
+                    // get category details
+                    $category = $this->categoryRepository->get($categoryLoop['entity_id'], $storeViewIdLoop);
+
+                    // don't get root category "Root Catalog"
+                    if ($category->getLevel() > 0) {
+                        $categoryMazen = $this->optimizmeMazenUtils->formatCategoryForMazen(
+                            $this->optimizmeMazenDomManipulation,
+                            $category,
+                            0,
+                            $fieldsFilter
+                        );
+                        array_push($tabResults, $categoryMazen);
                     }
-
-                    $categoryInfos = [
-                        'id' => (int)$category->getId(),
-                        'id_lang' => (int)$storeViewId,
-                        'name' => $category->getName(),
-                        'description' => $category->getDescription(),
-                        'slug' => $category->getUrlKey(),
-                        'publish' => (int)$categoryStatus
-                    ];
-                    array_push($tabResults, $categoryInfos);
                 }
             }
         }
-
         $this->returnAjax['categories'] = $tabResults;
     }
 
@@ -809,7 +816,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
      */
     public function getCategory($elementId, $objData)
     {
-        $tabCategory = [];
+        $categoryMazen = [];
         $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
 
         // get category details
@@ -821,22 +828,16 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
         }
 
         if ($category->getId() && $category->getId() != '') {
-            $tabCategory = [
-                'id' => (int)$category->getId(),
-                'id_lang' => (int)$storeViewId,
-                'name' => $category->getName(),
-                'slug' => $category->getUrlKey(),
-                'url' => $category->getUrl(),
-                'description' => $category->getDescription(),
-                'meta_title' => $category->getMetaTitle(),
-                'meta_description' => $category->getMetaDescription(),
-                'publish' => (int)$categoryStatus
-            ];
+            $categoryMazen = $this->optimizmeMazenUtils->formatCategoryForMazen(
+                $this->optimizmeMazenDomManipulation,
+                $category,
+                1
+            );
         }
 
         $this->returnAjax = [
             'message' => 'Category loaded',
-            'category' => $tabCategory
+            'category' => $categoryMazen
         ];
     }
 
@@ -888,7 +889,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
         if (!empty($tabPages)) {
             foreach ($tabPages as $page) {
                 if ($page->getTitle() != '') {
-                    $prodReturn = $this->optimizmeMazenUtils->loadObjectForMazen(
+                    $prodReturn = $this->optimizmeMazenUtils->formatObjectForMazen(
                         $this->optimizmeMazenDomManipulation,
                         'page',
                         $page,
@@ -918,13 +919,13 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
      * Get cms page detail
      * @param $idPost
      */
-    public function getPage($idPost, $objData)
+    public function getPage($idPost)
     {
         // get page detail
         $page = $this->pageRepository->getById($idPost);
 
         if ($page->getPageId() != '') {
-            $this->returnAjax['page'] = $this->optimizmeMazenUtils->loadObjectForMazen(
+            $this->returnAjax['page'] = $this->optimizmeMazenUtils->formatObjectForMazen(
                 $this->optimizmeMazenDomManipulation,
                 'page',
                 $page,
@@ -940,28 +941,38 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
     /**
      * load list of custom redirections
      */
-    public function getRedirections()
+    public function getRedirections($data)
     {
         $tabResults = [];
-        $magRedirections = $this->optimizmeMazenRedirections->getAllRedirections();
+        $tabParams = [];
+        if (isset($data->post_type) && $data->post_type != '') {
+            $tabParams['statut'] = $this->optimizmeMazenRedirections->getEntityType($data->post_type);
+        }
+        if (isset($data->id_lang) && $data->id_lang != '') {
+            $tabParams['id_lang'] = $data->id_lang;
+        }
+
+        $magRedirections = $this->optimizmeMazenRedirections->getAllRedirections($tabParams);
 
         if (is_array($magRedirections) && !empty($magRedirections)) {
             foreach ($magRedirections as $redirection) {
-                // get store base url for this url rewrite (depending from store id)
-                $storeBaseUrl = $this->optimizmeMazenUtils->getStoreBaseUrl($redirection['store_id']);
-
-                array_push(
-                    $tabResults,
-                    [
-                        'id' => $redirection['url_rewrite_id'],
-                        'request_path' => $storeBaseUrl. $redirection['request_path'],
-                        'target_path' => $storeBaseUrl. $redirection['target_path']
-                    ]
-                );
+                $redirectionMazen = $this->optimizmeMazenRedirections->formatRedirectionForMazen($redirection);
+                array_push($tabResults, $redirectionMazen);
             }
         }
 
         $this->returnAjax['redirections'] = $tabResults;
+    }
+
+    /**
+     * @param $field
+     * @param $value
+     */
+    public function getRedirection($field, $value)
+    {
+        $redirection = $this->optimizmeMazenRedirections->getRedirectionBy($field, $value);
+        $redirectionMazen = $this->optimizmeMazenRedirections->formatRedirectionForMazen($redirection);
+        $this->returnAjax['redirection'] = $redirectionMazen;
     }
 
     /**

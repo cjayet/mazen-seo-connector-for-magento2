@@ -2,6 +2,8 @@
 namespace Optimizme\Mazen\Helper;
 
 use Firebase\JWT\JWT;
+use Magento\Catalog\Api\Data\CategoryInterface;
+use Magento\Catalog\Model\CategoryRepository;
 
 /**
  * Class OptimizmeMazenUtils
@@ -10,7 +12,6 @@ use Firebase\JWT\JWT;
  */
 class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
 {
-
     private $storeManager;
     private $wysiwygDirectory;
     private $directoryList;
@@ -249,7 +250,7 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
      * @param $idStore
      * @return mixed
      */
-    public function getStoreBaseUrl($idStore)
+    public function getStoreBaseUrl($idStore = null)
     {
         return $this->storeManager->getStore($idStore)->getBaseUrl();
     }//end getStoreBaseUrl()
@@ -382,7 +383,7 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
      * @param array $fieldsFilter
      * @return array
      */
-    public function loadObjectForMazen($dom, $type, $object, $loadAll, $fieldsFilter = [])
+    public function formatObjectForMazen($dom, $type, $object, $loadAll, $fieldsFilter = [])
     {
         $tabPost = [];
 
@@ -406,7 +407,6 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
                 $status = 0;
             }
 
-            //
             if (strstr($urlObject, '?__')) {
                 $tabUrlProduct = explode('?__', $urlObject);
                 $urlObject = $tabUrlProduct[0];
@@ -430,47 +430,14 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
                 'slug' => $slug,
                 'meta_title' => $object->getMetaTitle(),
                 'meta_description' => $object->getMetaDescription(),
-                'a' => $this->getNodesFromKnownContent(
-                    $dom,
-                    $content,
-                    'a'
-                ),
-                'img' => $this->getNodesFromKnownContent(
-                    $dom,
-                    $content,
-                    'img',
-                    'src'
-                ),
-                'h1' => $this->getNodesFromKnownContent(
-                    $dom,
-                    $content,
-                    'h1'
-                ),
-                'h2' => $this->getNodesFromKnownContent(
-                    $dom,
-                    $content,
-                    'h2'
-                ),
-                'h3' => $this->getNodesFromKnownContent(
-                    $dom,
-                    $content,
-                    'h3'
-                ),
-                'h4' => $this->getNodesFromKnownContent(
-                    $dom,
-                    $content,
-                    'h4'
-                ),
-                'h5' => $this->getNodesFromKnownContent(
-                    $dom,
-                    $content,
-                    'h5'
-                ),
-                'h6' => $this->getNodesFromKnownContent(
-                    $dom,
-                    $content,
-                    'h6'
-                ),
+                'a' => $this->getNodesFromKnownContent($dom, $content,'a'),
+                'img' => $this->getNodesFromKnownContent($dom, $content, 'img', 'src'),
+                'h1' => $this->getNodesFromKnownContent($dom, $content, 'h1'),
+                'h2' => $this->getNodesFromKnownContent($dom, $content, 'h2'),
+                'h3' => $this->getNodesFromKnownContent($dom, $content, 'h3'),
+                'h4' => $this->getNodesFromKnownContent($dom, $content, 'h4'),
+                'h5' => $this->getNodesFromKnownContent($dom, $content, 'h5'),
+                'h6' => $this->getNodesFromKnownContent($dom, $content, 'h6')
             ];
 
             if ($type == 'product') {
@@ -487,7 +454,54 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
         return $tabPost;
     }
 
+    /**
+     * @param OptimizmeMazenDomManipulation $dom
+     * @param CategoryInterface $category
+     * @param $loadAll
+     * @param array $fieldsFilter
+     * @return array
+     */
+    public function formatCategoryForMazen($dom, $category, $loadAll, $fieldsFilter = [])
+    {
+        $categoryStatus = $category->getIsActive();
+        $content = $category->getDescription();
 
+        if ($categoryStatus == 2) {
+            $categoryStatus = 0;
+        }
+
+        $categoryInfos = [
+            'id' => (int)$category->getId(),
+            'id_lang' => $category->getStoreId(),
+            'name' => $category->getName(),
+            'publish' => (int)$categoryStatus,
+            'url' => $category->getUrl(),
+        ];
+
+        $tabPossibleContents = [
+            'slug' => $category->getUrlKey(),
+            'description' => $content,
+            'meta_title' => $category->getMetaTitle(),
+            'meta_description' => $category->getMetaDescription(),
+            'a' => $this->getNodesFromKnownContent($dom, $content,'a'),
+            'img' => $this->getNodesFromKnownContent($dom, $content, 'img', 'src'),
+            'h1' => $this->getNodesFromKnownContent($dom, $content, 'h1'),
+            'h2' => $this->getNodesFromKnownContent($dom, $content, 'h2'),
+            'h3' => $this->getNodesFromKnownContent($dom, $content, 'h3'),
+            'h4' => $this->getNodesFromKnownContent($dom, $content, 'h4'),
+            'h5' => $this->getNodesFromKnownContent($dom, $content, 'h5'),
+            'h6' => $this->getNodesFromKnownContent($dom, $content, 'h6')
+        ];
+
+        // add non required fields
+        foreach ($tabPossibleContents as $key => $value) {
+            if ($loadAll == 1 || (!empty($fieldsFilter) && in_array($key, $fieldsFilter))) {
+                $categoryInfos[$key] = $value;
+            }
+        }
+
+        return $categoryInfos;
+    }
 
     /**
      * @return array

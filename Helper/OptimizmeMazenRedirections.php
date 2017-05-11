@@ -10,18 +10,22 @@ class OptimizmeMazenRedirections extends \Magento\Framework\App\Helper\AbstractH
 {
     private $urlRewriteFactory;
     private $urlRewrite;
+    private $optimizmeMazenUtils;
 
     /**
      * OptimizmeMazenRedirections constructor.
      * @param \Magento\UrlRewrite\Model\UrlRewriteFactory $urlRewriteFactory
      * @param \Magento\UrlRewrite\Model\UrlRewrite $urlRewrite
+     * @param OptimizmeMazenUtils $optimizmeMazenUtils
      */
     public function __construct(
         \Magento\UrlRewrite\Model\UrlRewriteFactory $urlRewriteFactory,
-        \Magento\UrlRewrite\Model\UrlRewrite $urlRewrite
+        \Magento\UrlRewrite\Model\UrlRewrite $urlRewrite,
+        \Optimizme\Mazen\Helper\OptimizmeMazenUtils $optimizmeMazenUtils
     ) {
         $this->urlRewriteFactory   = $urlRewriteFactory;
         $this->urlRewrite          = $urlRewrite;
+        $this->optimizmeMazenUtils = $optimizmeMazenUtils;
     }//end __construct()
 
     /**
@@ -34,7 +38,7 @@ class OptimizmeMazenRedirections extends \Magento\Framework\App\Helper\AbstractH
         // add in database if necessary
         if ($oldUrl != $newUrl) {
             // check if url already exists
-            $redirection = $this->getRedirectionByRequestPath($oldUrl);
+            $redirection = $this->getRedirectionBy('request_path', $oldUrl);
             if (is_array($redirection) && !empty($redirection)) {
                 // update
                 $urlRewrite = $this->urlRewrite->load($redirection['url_rewrite_id']);
@@ -94,32 +98,75 @@ class OptimizmeMazenRedirections extends \Magento\Framework\App\Helper\AbstractH
     }//end deleteRedirectionByRequestPath()
 
     /**
-     * @param string $statut
+     * @param array $params
      * @return array
      */
-    public function getAllRedirections($statut = 'custom')
+    public function getAllRedirections($params = [])
     {
-        $magRedirections = $this->urlRewriteFactory->create()
-            ->getCollection()
-            ->addFieldToFilter('entity_type', $statut)
-            ->getData();
-
-        return $magRedirections;
+        $magRedirections = $this->urlRewriteFactory->create()->getCollection();
+        if (isset($params['statut']) && $params['statut'] != '') {
+            $magRedirections->addFieldToFilter('entity_type', $params['statut']);
+        }
+        if (isset($params['id_lang']) && $params['id_lang'] != '') {
+            $magRedirections->addFieldToFilter('store_id', $params['id_lang']);
+        }
+        $data = $magRedirections->getData();
+        return $data;
     }//end getAllRedirections()
 
     /**
-     * @param $oldUrl
+     * @param $typeField
+     * @param $value
      * @return mixed
      */
-    public function getRedirectionByRequestPath($oldUrl)
+    public function getRedirectionBy($typeField, $value)
     {
+        if ($typeField == 'request_path' || $typeField == 'target_path') {
+            $storeBaseUrl = $this->optimizmeMazenUtils->getStoreBaseUrl();
+            $value = str_replace($storeBaseUrl, '', $value);
+        }
         $magRedirections = $this->urlRewriteFactory->create()
             ->getCollection()
-            ->addFieldToFilter('entity_type', 'custom')
-            ->addFieldToFilter('request_path', $oldUrl)
+            ->addFieldToFilter($typeField, $value)
             ->getFirstItem()
             ->getData();
 
         return $magRedirections;
-    }//end getRedirectionByRequestPath()
+    }//end getRedirectionBy()
+
+    /**
+     * @param $type
+     * @return string
+     */
+    public function getEntityType($type)
+    {
+        if ($type == 'cms-page') {
+            $type = 'page';
+        } elseif ($type == 'page') {
+            $type = 'cms-page';
+        }
+        return $type;
+    }
+
+    /**
+     * @param $redirection
+     * @return array
+     */
+    public function formatRedirectionForMazen($redirection)
+    {
+        if (!empty($redirection)) {
+            $storeBaseUrl = $this->optimizmeMazenUtils->getStoreBaseUrl($redirection['store_id']);
+            $tab = [
+                'id' => (int)$redirection['url_rewrite_id'],
+                'id_lang' => $redirection['store_id'],
+                'type' => $this->getEntityType($redirection['entity_type']),
+                'url_base' => $storeBaseUrl. $redirection['request_path'],
+                'url_redirect' => $storeBaseUrl. $redirection['target_path'],
+            ];
+        } else {
+            $tab = [];
+        }
+
+        return $tab;
+    }
 }//end class

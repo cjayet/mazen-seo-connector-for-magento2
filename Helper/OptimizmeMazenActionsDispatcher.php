@@ -32,21 +32,37 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
             case 'get':
                 if (isset($data->type) && $data->type != '') {
                     if ($data->type == 'product') {
-                        if (isset($data->id) && is_numeric($data->id)) {
+                        if (is_numeric($postId)) {
                             $optimizmeMazenAction->getProduct($postId, $data);
                         } else {
                             $optimizmeMazenAction->getProducts($data);
                         }
                     } elseif ($data->type == 'page') {
-                        if (isset($data->id) && is_numeric($data->id)) {
-                            $optimizmeMazenAction->getPage($postId, $data);
+                        if (is_numeric($postId)) {
+                            $optimizmeMazenAction->getPage($postId);
                         } else {
                             $optimizmeMazenAction->getPages($data);
+                        }
+                    } elseif ($data->type == 'category') {
+                        if (is_numeric($postId)) {
+                            $optimizmeMazenAction->getCategory($postId, $data);
+                        } else {
+                            $optimizmeMazenAction->getCategories($data);
+                        }
+                    } elseif ($data->type == 'redirection') {
+                        if ($postId != '') {
+                            $optimizmeMazenAction->getRedirection('url_rewrite_id', $postId);
+                        } elseif (isset($data->url_base) && $data->url_base != '') {
+                            $optimizmeMazenAction->getRedirection('request_path', $data->url_base);
+                        } elseif (isset($data->url_redirect) && $data->url_redirect != '') {
+                            $optimizmeMazenAction->getRedirection('target_path', $data->url_redirect);
+                        } else {
+                            $optimizmeMazenAction->getRedirections($data);
                         }
                     } elseif ($data->type == 'all') {
                         $optimizmeMazenAction->getAll($data);
                     } else {
-                        $optimizmeMazenAction->addMsgError('Not allowed type '. $data->type .' to get');
+                        $optimizmeMazenAction->addMsgError('Type '. $data->type .' is not allowed with get action');
                     }
                 } else {
                     $optimizmeMazenAction->addMsgError('No type specified for get');
@@ -124,6 +140,20 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
                             } else {
                                 $optimizmeMazenAction->addMsgError('Field '. $data->field .' is not supported in update '. $data->type);
                             }
+                        } elseif ($data->type == 'category') {
+                            if ($data->field == 'name') {
+                                $optimizmeMazenAction->updateObjectTitle($postId, $data, 'Category', 'Name');
+                            } elseif ($data->field == 'description') {
+                                $optimizmeMazenAction->updateObjectContent($postId, $data, 'Category', 'Description');
+                            } elseif ($data->field == 'slug') {
+                                $optimizmeMazenAction->updateObjectSlug($postId, $data, 'Category', 'UrlKey');
+                            } elseif ($data->field == 'meta_title') {
+                                $optimizmeMazenAction->updateObjectMetaTitle($postId, $data, 'Category', 'Meta_title');
+                            } elseif ($data->field == 'meta_description') {
+                                $optimizmeMazenAction->updateObjectMetaDescription($postId, $data, 'Category', 'Meta_description');
+                            } else {
+                                $optimizmeMazenAction->addMsgError('Field '. $data->field .' is not supported in update '. $data->type);
+                            }
                         } else {
                             $optimizmeMazenAction->addMsgError('Not allowed type to update');
                         }
@@ -133,6 +163,26 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
                 }
                 break;
 
+            default:
+                //$boolNoAction = 1;
+                $boolNoAction = $this->dispatchMazenActionDeprecated($data, $optimizmeMazenAction, $postId = '');
+                break;
+        }
+
+        return $boolNoAction;
+    }
+
+
+    /**
+     * @param $data
+     * @param OptimizmeMazenActions $optimizmeMazenAction
+     * @param string $postId
+     * @return int
+     */
+    public function dispatchMazenActionDeprecated($data, $optimizmeMazenAction, $postId = '')
+    {
+        $boolNoAction = 0;
+        switch ($data->action) {
             // products
             case 'get_products':
                 $optimizmeMazenAction->getProducts($data);
@@ -209,10 +259,10 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
 
             // CMS pages
             case 'get_posts':
-                $optimizmeMazenAction->getPages();
+                $optimizmeMazenAction->getPages($data);
                 break;
             case 'get_post':
-                $optimizmeMazenAction->getPage($postId, $data);
+                $optimizmeMazenAction->getPage($postId);
                 break;
             case 'set_post_title':
                 $optimizmeMazenAction->updateObjectTitle($postId, $data, 'Page', 'Title');
@@ -303,7 +353,7 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
 
             // redirections
             case 'get_redirections':
-                $optimizmeMazenAction->getRedirections();
+                $optimizmeMazenAction->getRedirections($data);
                 break;
             case 'delete_redirection':
                 $optimizmeMazenAction->deleteRedirection($data);
@@ -313,7 +363,6 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
                 $boolNoAction = 1;
                 break;
         }
-
         return $boolNoAction;
     }
 }
