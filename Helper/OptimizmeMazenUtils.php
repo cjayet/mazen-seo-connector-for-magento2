@@ -318,8 +318,11 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
         $storeViewId = $this->extractStoreViewFromMazenData($objData);
 
         // get product details
-        if ($type == 'Product' || $type == 'Category') {
+        if ($type == 'Product') {
             $object = $this->productRepository->getById($idObj, false, $storeViewId);
+            $idObj = $object->getId();
+        } elseif ($type == 'Category') {
+            $object = $this->categoryRepository->get($idObj, $storeViewId);
             $idObj = $object->getId();
         } else {
             $object = $this->pageRepository->getById($idObj);
@@ -430,7 +433,7 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
                 'slug' => $slug,
                 'meta_title' => $object->getMetaTitle(),
                 'meta_description' => $object->getMetaDescription(),
-                'a' => $this->getNodesFromKnownContent($dom, $content,'a'),
+                'a' => $this->getNodesFromKnownContent($dom, $content, 'a'),
                 'img' => $this->getNodesFromKnownContent($dom, $content, 'img', 'src'),
                 'h1' => $this->getNodesFromKnownContent($dom, $content, 'h1'),
                 'h2' => $this->getNodesFromKnownContent($dom, $content, 'h2'),
@@ -483,7 +486,7 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
             'description' => $content,
             'meta_title' => $category->getMetaTitle(),
             'meta_description' => $category->getMetaDescription(),
-            'a' => $this->getNodesFromKnownContent($dom, $content,'a'),
+            'a' => $this->getNodesFromKnownContent($dom, $content, 'a'),
             'img' => $this->getNodesFromKnownContent($dom, $content, 'img', 'src'),
             'h1' => $this->getNodesFromKnownContent($dom, $content, 'h1'),
             'h2' => $this->getNodesFromKnownContent($dom, $content, 'h2'),

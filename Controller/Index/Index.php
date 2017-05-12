@@ -30,7 +30,7 @@ class Index extends \Magento\Framework\App\Action\Action
     /**
      * Index constructor.
      * @param Context $context
-     * @param \Optimizme\Mazen\Helper\OptimizmeMazenActionsDispatcher $optimizmeMazenActionDispatcher
+     * @param \Optimizme\Mazen\Helper\Dispatcher\OptimizmeMazenActionsDispatcher $optimizmeMazenActionDispatcher
      * @param \Optimizme\Mazen\Helper\OptimizmeMazenActions $optimizmeMazenAction
      * @param \Optimizme\Mazen\Helper\OptimizmeMazenUtils $optimizmeMazenUtils
      * @param \Optimizme\Mazen\Helper\OptimizmeMazenJwt $optimizmeMazenJwt
@@ -38,7 +38,7 @@ class Index extends \Magento\Framework\App\Action\Action
      */
     public function __construct(
         Context $context,
-        \Optimizme\Mazen\Helper\OptimizmeMazenActionsDispatcher $optimizmeMazenActionDispatcher,
+        \Optimizme\Mazen\Helper\Dispatcher\OptimizmeMazenActionsDispatcher $optimizmeMazenActionDispatcher,
         \Optimizme\Mazen\Helper\OptimizmeMazenActions $optimizmeMazenAction,
         \Optimizme\Mazen\Helper\OptimizmeMazenUtils $optimizmeMazenUtils,
         \Optimizme\Mazen\Helper\OptimizmeMazenJwt $optimizmeMazenJwt,
@@ -125,7 +125,7 @@ class Index extends \Magento\Framework\App\Action\Action
                 }
 
                 // ACTIONS
-                if ($dataOptimizme->action == '') {
+                if (!isset($dataOptimizme->action) || $dataOptimizme->action == '') {
                     // no action specified
                     $msg = 'No action defined';
                     $this->optimizmeJsonMessages->setMsgReturn($msg, 'danger');

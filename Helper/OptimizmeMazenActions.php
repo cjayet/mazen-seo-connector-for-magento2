@@ -1005,7 +1005,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
             $this->returnAjax = [
                 'message' => 'JSON Token generated in Magento.',
                 'jws_token' => $keyJWT['token'],
-                'id_project' => $keyJWT['id_project'],
+                'id_client' => $keyJWT['id_project'],
                 'cms' => 'magento',
                 'site_domain' => $objData->url_cible,
                 'jwt_disable' => 1
@@ -1015,6 +1015,28 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
             array_push($this->tabErrors, 'Signon error. CMS not registered.');
         }
     }
+
+    /**
+     * @param $data
+     */
+    public function checkCredentials($data)
+    {
+        if (isset($data) && is_object($data) && isset($data->login) && $data->login != '' && isset($data->password) && $data->password != '') {
+            if ($this->user->authenticate($data->login, $data->password)) {
+                $isValid = 1;
+            } else {
+                $isValid = 0;
+            }
+
+            $this->returnAjax = array(
+                'is_valid' => $isValid
+            );
+        }
+        else {
+            array_push($this->tabErrors, 'Need more informations for credentials check.');
+        }
+    }
+
 
     /**
      * Return Mazen plugin version

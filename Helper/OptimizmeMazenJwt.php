@@ -132,11 +132,11 @@ class OptimizmeMazenJwt extends \Magento\Framework\App\Helper\AbstractHelper
             $this->optimizmeJsonMessages->setMsgReturn('JWT Error: Header is null', 'danger');
             return 0;
         }
-        if (!is_object($header) || !isset($header->idp) || !is_numeric($header->idp)) {
+        if (!is_object($header) || !isset($header->idc) || !is_numeric($header->idc)) {
             $this->optimizmeJsonMessages->setMsgReturn('JWT Error: Header not formatted correctly', 'danger');
             return 0;
         } else {
-            return $header->idp;
+            return $header->idc;
         }
     }
 
