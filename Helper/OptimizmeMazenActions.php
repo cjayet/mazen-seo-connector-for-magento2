@@ -1005,7 +1005,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
             $this->returnAjax = [
                 'message' => 'JSON Token generated in Magento.',
                 'jws_token' => $keyJWT['token'],
-                'id_client' => $keyJWT['id_project'],
+                'id_client' => $keyJWT['id_client'],
                 'cms' => 'magento',
                 'site_domain' => $objData->url_cible,
                 'jwt_disable' => 1

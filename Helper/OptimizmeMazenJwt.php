@@ -96,12 +96,12 @@ class OptimizmeMazenJwt extends \Magento\Framework\App\Helper\AbstractHelper
             $length
         );
 
-        // generate id project
-        $idProject = mt_rand(1, 999999999);
+        // generate id client
+        $idClient = mt_rand(1, 999999999);
 
         // save and flush cache config
         $this->resourceConfig->saveConfig(
-            'optimizme/mazen/jwt'. $idProject,
+            'optimizme/mazen/jwt'. $idClient,
             $key,
             'default',
             0
@@ -110,7 +110,7 @@ class OptimizmeMazenJwt extends \Magento\Framework\App\Helper\AbstractHelper
 
         $tab = [
             'token' => $key,
-            'id_project' => $idProject
+            'id_client' => $idClient
         ];
         return $tab;
     }//end generateKeyForJwt()

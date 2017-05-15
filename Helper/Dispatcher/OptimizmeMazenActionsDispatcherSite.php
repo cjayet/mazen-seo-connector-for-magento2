@@ -10,8 +10,8 @@ class OptimizmeMazenActionsDispatcherSite extends \Magento\Framework\App\Helper\
     private $mazenAction;
 
     /**
-     * OptimizmeMazenActionsDispatcherPage constructor.
-     * @param OptimizmeMazenActions $optimizmeMazenActions
+     * OptimizmeMazenActionsDispatcherSite constructor.
+     * @param \Optimizme\Mazen\Helper\OptimizmeMazenActions $optimizmeMazenActions
      */
     public function __construct(
         \Optimizme\Mazen\Helper\OptimizmeMazenActions $optimizmeMazenActions
@@ -25,7 +25,7 @@ class OptimizmeMazenActionsDispatcherSite extends \Magento\Framework\App\Helper\
     public function get($data)
     {
         if (isset($data->field) && $data->field != '') {
-            if ($data->field == 'register_cms') {
+            if ($data->field == 'register') {
                 $this->mazenAction->registerCMS($data);
             } elseif ($data->field == 'check_credentials') {
                 $this->mazenAction->checkCredentials($data);

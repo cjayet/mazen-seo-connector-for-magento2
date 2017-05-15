@@ -36,7 +36,6 @@ class OptimizmeMazenActionsDispatcherProduct extends \Magento\Framework\App\Help
      */
     public function update($data)
     {
-
         if (!isset($data->id) || !is_numeric($data->id)) {
             $this->mazenAction->addMsgError('ID is not set in update '. $data->type);
         } else {

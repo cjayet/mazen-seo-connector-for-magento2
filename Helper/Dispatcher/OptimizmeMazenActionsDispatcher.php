@@ -10,7 +10,7 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
     /**
      * Action from MAZEN to do
      * @param $data
-     * @param OptimizmeMazenActions $optimizmeMazenAction
+     * @param \Optimizme\Mazen\Helper\OptimizmeMazenActions $optimizmeMazenAction
      * @param string $postId
      * @return int
      */
@@ -18,22 +18,29 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
     {
         $boolNoAction = 1;
 
-        // load required class for doing action
-        if (isset($data->type) && $data->type != '') {
-            $type = ucfirst(strtolower($data->type));
-            $class = '\Optimizme\Mazen\Helper\Dispatcher\OptimizmeMazenActionsDispatcher'. $type;
+        if (!isset($data->action)) {
+            $optimizmeMazenAction->addMsgError('No action set');
+        } elseif ($data->action == 'register_cms') {
+            $optimizmeMazenAction->registerCMS($data);
+            $boolNoAction = 0;
+        } else {
+            // load required class for doing action
+            if (isset($data->type) && $data->type != '') {
+                $type = ucfirst(strtolower($data->type));
+                $class = '\Optimizme\Mazen\Helper\Dispatcher\OptimizmeMazenActionsDispatcher'. $type;
 
-            if (class_exists($class)) {
-                $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-                $obj = $objectManager->create($class);
-                if (method_exists($obj, $data->action)) {
-                    $obj->{$data->action}($data);
-                    $boolNoAction = 0;
+                if (class_exists($class)) {
+                    $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+                    $obj = $objectManager->create($class);
+                    if (method_exists($obj, $data->action)) {
+                        $obj->{$data->action}($data);
+                        $boolNoAction = 0;
+                    } else {
+                        $optimizmeMazenAction->addMsgError('Method '. $data->action .' not found for class '. $class);
+                    }
                 } else {
-                    $optimizmeMazenAction->addMsgError('Method '. $data->action .' not found for class '. $class);
+                    $optimizmeMazenAction->addMsgError('Class not found for type '. $data->type);
                 }
-            } else {
-                $optimizmeMazenAction->addMsgError('Class not found for type '. $data->type);
             }
         }
 
