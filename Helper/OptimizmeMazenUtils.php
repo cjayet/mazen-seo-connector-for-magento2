@@ -2,8 +2,6 @@
 namespace Optimizme\Mazen\Helper;
 
 use Firebase\JWT\JWT;
-use Magento\Catalog\Api\Data\CategoryInterface;
-use Magento\Catalog\Model\CategoryRepository;
 
 /**
  * Class OptimizmeMazenUtils
@@ -15,41 +13,35 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
     private $storeManager;
     private $wysiwygDirectory;
     private $directoryList;
-    private $productRepository;
-    private $categoryRepository;
-    private $pageRepository;
     private $pageHelper;
     private $io;
+    private $mazenMagentoTools;
 
     /**
      * OptimizmeMazenUtils constructor.
      * @param \Magento\Store\Model\StoreManagerInterface $storeManager
      * @param \Magento\Cms\Model\Wysiwyg\Config $wysiwyg
      * @param \Magento\Framework\App\Filesystem\DirectoryList $directory_list
-     * @param \Magento\Catalog\Model\ProductRepository $productRepository
-     * @param \Magento\Catalog\Model\CategoryRepository $categoryRepository
-     * @param \Magento\Cms\Model\PageRepository $pageRepository
      * @param \Magento\Cms\Helper\Page $pageHelper
      * @param \Magento\Framework\Filesystem\Io\File $io
+     * @param OptimizmeMazenMagentoTools $optimizmeMazenMagentoTools
      */
     public function __construct(
         \Magento\Store\Model\StoreManagerInterface $storeManager,
         \Magento\Cms\Model\Wysiwyg\Config $wysiwyg,
         \Magento\Framework\App\Filesystem\DirectoryList $directory_list,
-        \Magento\Catalog\Model\ProductRepository $productRepository,
         \Magento\Catalog\Model\CategoryRepository $categoryRepository,
-        \Magento\Cms\Model\PageRepository $pageRepository,
         \Magento\Cms\Helper\Page $pageHelper,
-        \Magento\Framework\Filesystem\Io\File $io
+        \Magento\Framework\Filesystem\Io\File $io,
+        \Optimizme\Mazen\Helper\OptimizmeMazenMagentoTools $optimizmeMazenMagentoTools
     ) {
         $this->storeManager = $storeManager;
         $this->wysiwygDirectory = $wysiwyg::IMAGE_DIRECTORY;
         $this->directoryList = $directory_list;
-        $this->productRepository = $productRepository;
         $this->categoryRepository = $categoryRepository;
-        $this->pageRepository = $pageRepository;
         $this->pageHelper = $pageHelper;
         $this->io = $io;
+        $this->mazenMagentoTools = $optimizmeMazenMagentoTools;
     }//end __construct()
 
     /**
@@ -210,13 +202,13 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
             // all is ok: try to save
             // get product/category/page details
             if ($type == 'Product') {
-                $object = $this->productRepository->getById($idProduct, false, $storeId);
+                $object = $this->mazenMagentoTools->loadObjectFromType('Product', $idProduct, $storeId);
                 $idObj = $object->getId();
             } elseif ($type == 'Category') {
-                $object = $this->categoryRepository->get($idProduct, $storeId);
+                $object = $this->mazenMagentoTools->loadObjectFromType('Category', $idProduct, $storeId);
                 $idObj = $object->getId();
             } else {
-                $object = $this->pageRepository->getById($idProduct);
+                $object = $this->mazenMagentoTools->loadObjectFromType('Page', $idProduct);
                 $idObj = $object->getPageId();
             }
 
@@ -271,7 +263,7 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
         $data['website'] = $urlWebsite;
 
         if ($toJWT == 1) {
-            $key = $this->getJwtKey();  // TODO dynamical
+            $key = $this->getJwtKey();  // TODO with new function for secret/idclient
             $data = JWT::encode($data, $key);
         } else {
             $data = json_encode($data);
@@ -319,13 +311,13 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
 
         // get product details
         if ($type == 'Product') {
-            $object = $this->productRepository->getById($idObj, false, $storeViewId);
+            $object = $this->mazenMagentoTools->loadObjectFromType('Product', $idObj, $storeViewId);
             $idObj = $object->getId();
         } elseif ($type == 'Category') {
-            $object = $this->categoryRepository->get($idObj, $storeViewId);
+            $object = $this->mazenMagentoTools->loadObjectFromType('Category', $idObj, $storeViewId);
             $idObj = $object->getId();
         } else {
-            $object = $this->pageRepository->getById($idObj);
+            $object = $this->mazenMagentoTools->loadObjectFromType('Page', $idObj);
             $idObj = $object->getPageId();
         }
 
@@ -459,7 +451,7 @@ class OptimizmeMazenUtils extends \Magento\Framework\App\Helper\AbstractHelper
 
     /**
      * @param OptimizmeMazenDomManipulation $dom
-     * @param CategoryInterface $category
+     * @param \Magento\Catalog\Api\Data\CategoryInterface $category
      * @param $loadAll
      * @param array $fieldsFilter
      * @return array

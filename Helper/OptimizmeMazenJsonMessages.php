@@ -1,8 +1,6 @@
 <?php
 namespace Optimizme\Mazen\Helper;
 
-use Firebase\JWT\JWT;
-
 /**
  * Class OptimizmeMazenUtils
  *

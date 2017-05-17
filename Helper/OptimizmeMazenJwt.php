@@ -120,7 +120,7 @@ class OptimizmeMazenJwt extends \Magento\Framework\App\Helper\AbstractHelper
      *
      * @return int
      */
-    public function getIdProject($jwt)
+    public function getIdClient($jwt)
     {
         $tks = explode('.', $jwt);
         if (count($tks) != 3) {
@@ -141,22 +141,23 @@ class OptimizmeMazenJwt extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     /**
-     * Get saved JWT key
-     * @param $idProject
-     * @return mixed
+     * @param $dataOptme
+     * @return mixed|string
      */
-    public function getJwtKey($idProject)
+    public function getJwtKey($dataOptme)
     {
         $key = '';
-
-        try {
-            $key = $this->scopeConfig->getValue('optimizme/mazen/jwt'.$idProject, 'default', 0);
-            if ($key === null) {
-                $key = '';
-                $this->optimizmeJsonMessages->setMsgReturn('JWT Error: Secret is null', 'danger');
+        $idClient = $this->getIdClient($dataOptme);
+        if ($idClient != 0) {
+            try {
+                $key = $this->scopeConfig->getValue('optimizme/mazen/jwt'.$idClient, 'default', 0);
+                if ($key === null) {
+                    $key = '';
+                    $this->optimizmeJsonMessages->setMsgReturn('JWT Error: Secret is null', 'danger');
+                }
+            } catch (Exception $e) {
+                $this->optimizmeJsonMessages->setMsgReturn('JWT Error: Exception in get JWT secret', 'danger');
             }
-        } catch (Exception $e) {
-            $this->optimizmeJsonMessages->setMsgReturn('JWT Error: Exception in get JWT secret', 'danger');
         }
 
         return $key;

@@ -19,14 +19,11 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
     private $productUrlPathGenerator;
     private $categoryUrlPathGenerator;
     private $user;
-    private $productRepository;
-    private $categoryRepository;
-    private $pageRepository;
-    private $pageHelper;
     private $optimizmeMazenUtils;
     private $optimizmeMazenJwt;
     private $optimizmeMazenRedirections;
     private $optimizmeMazenDomManipulation;
+    private $mazenMagentoTools;
 
     /**
      * OptimizmeMazenActions constructor.
@@ -38,14 +35,11 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
      * @param \Magento\CatalogUrlRewrite\Model\ProductUrlPathGenerator $productUrlPathGenerator
      * @param \Magento\CatalogUrlRewrite\Model\CategoryUrlPathGenerator $categoryUrlPathGenerator
      * @param \Magento\User\Model\User $user
-     * @param \Magento\Catalog\Model\ProductRepository $productRepository
-     * @param \Magento\Catalog\Model\CategoryRepository $categoryRepository
-     * @param \Magento\Cms\Model\PageRepository $pageRepository
-     * @param \Magento\Cms\Helper\Page $pageHelper
      * @param OptimizmeMazenUtils $optimizmeMazenUtils
      * @param OptimizmeMazenJwt $optimizmeMazenJwt
      * @param OptimizmeMazenRedirections $optimizmeMazenRedirections
      * @param OptimizmeMazenDomManipulation $optimizmeMazenDomManipulation
+     * @param OptimizmeMazenMagentoTools $optimizmeMazenMagentoTools
      */
     public function __construct(
         \Magento\Catalog\Model\ResourceModel\Product\CollectionFactory $productCollectionFactory,
@@ -56,14 +50,11 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\CatalogUrlRewrite\Model\ProductUrlPathGenerator $productUrlPathGenerator,
         \Magento\CatalogUrlRewrite\Model\CategoryUrlPathGenerator $categoryUrlPathGenerator,
         \Magento\User\Model\User $user,
-        \Magento\Catalog\Model\ProductRepository $productRepository,
-        \Magento\Catalog\Model\CategoryRepository $categoryRepository,
-        \Magento\Cms\Model\PageRepository $pageRepository,
-        \Magento\Cms\Helper\Page $pageHelper,
         \Optimizme\Mazen\Helper\OptimizmeMazenUtils $optimizmeMazenUtils,
         \Optimizme\Mazen\Helper\OptimizmeMazenJwt $optimizmeMazenJwt,
         \Optimizme\Mazen\Helper\OptimizmeMazenRedirections $optimizmeMazenRedirections,
-        \Optimizme\Mazen\Helper\OptimizmeMazenDomManipulation $optimizmeMazenDomManipulation
+        \Optimizme\Mazen\Helper\OptimizmeMazenDomManipulation $optimizmeMazenDomManipulation,
+        \Optimizme\Mazen\Helper\OptimizmeMazenMagentoTools $optimizmeMazenMagentoTools
     ) {
         $this->productCollectionFactory = $productCollectionFactory;
         $this->productFactory = $productFactory;
@@ -73,14 +64,11 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
         $this->productUrlPathGenerator = $productUrlPathGenerator;
         $this->categoryUrlPathGenerator = $categoryUrlPathGenerator;
         $this->user = $user;
-        $this->productRepository = $productRepository;
-        $this->categoryRepository = $categoryRepository;
-        $this->pageRepository = $pageRepository;
-        $this->pageHelper = $pageHelper;
         $this->optimizmeMazenUtils = $optimizmeMazenUtils;
         $this->optimizmeMazenJwt = $optimizmeMazenJwt;
         $this->optimizmeMazenRedirections = $optimizmeMazenRedirections;
         $this->optimizmeMazenDomManipulation = $optimizmeMazenDomManipulation;
+        $this->mazenMagentoTools = $optimizmeMazenMagentoTools;
 
         // tab messages and returns
         $this->tabErrors = [];
@@ -169,17 +157,11 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
                         $product = $this->productFactory->create()
                             ->setStoreId($storeViewIdLoop)
                             ->loadByAttribute('url_key', $slug);
+
                         if ($product && $product->getId() && is_numeric($product->getId())) {
-                            $productL = $this->productRepository->getById(
-                                $product->getId(),
-                                false,
-                                $storeViewIdLoop,
-                                false
-                            );
-                            if ($productL->getId() && is_numeric($productL->getId())) {
-                                array_push($tabProducts, $productL);
-                                $boolLinkFound = 1;
-                            }
+                            $product->setStoreId($storeViewIdLoop);
+                            array_push($tabProducts, $product);
+                            $boolLinkFound = 1;
                         }
                     }
                 }
@@ -193,11 +175,14 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
             foreach ($tabLoopStoreId as $storeViewIdLoop) {
                 $products = $this->productCollectionFactory->create();
                 $products->addStoreFilter($storeViewIdLoop);
+                $products->addAttributeToSelect('*');
+                $products->getItems();
 
                 if (!empty($products)) {
                     foreach ($products as $productBoucle) {
-                        $product = $this->productRepository->getById($productBoucle['entity_id'], false, $storeViewIdLoop);
-                        array_push($tabProducts, $product);
+                        // v2 : 1.5s
+                        $productBoucle->setStoreId($storeViewIdLoop);
+                        array_push($tabProducts, $productBoucle);
                     }
                 }
             }
@@ -241,7 +226,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
     {
         // get product details
         $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
-        $product = $this->productRepository->getById($idPost, false, $storeViewId);
+        $product = $this->mazenMagentoTools->loadObjectFromType('Product', $idPost, $storeViewId);
 
         $prodReturn = $this->optimizmeMazenUtils->formatObjectForMazen(
             $this->optimizmeMazenDomManipulation,
@@ -556,13 +541,13 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
             // load object init (for after)
             $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
             if ($type == 'Product') {
-                $objectInit = $this->productRepository->getById($idPost, false, $storeViewId);
+                $objectInit = $this->mazenMagentoTools->loadObjectFromType('Product', $idPost, $storeViewId);
                 $redirectFrom = $this->productUrlPathGenerator->getUrlPathWithSuffix($objectInit, $storeViewId);
             } elseif ($type == 'Category') {
-                $objectInit = $this->categoryRepository->get($idPost, $storeViewId);
+                $objectInit = $this->mazenMagentoTools->loadObjectFromType('Category', $idPost, $storeViewId);
                 $redirectFrom = $this->categoryUrlPathGenerator->getUrlPathWithSuffix($objectInit, $storeViewId);
             } else {
-                $objectInit = $this->pageRepository->getById($idPost);
+                $objectInit = $this->mazenMagentoTools->loadObjectFromType('Page', $idPost);
                 $redirectFrom = $objectInit->getIdentifier();
             }
 
@@ -600,7 +585,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
                         $entityType = 'category';
                     } else {
                         // cms page
-                        $this->returnAjax['url'] = $this->pageHelper->getPageUrl($idObjectUpdated);
+                        $this->returnAjax['url'] = $this->mazenMagentoTools->getPageUrl($idObjectUpdated);
                         $this->returnAjax['new_slug'] = $objUpdated->getIdentifier();
                         $redirectTo = $objUpdated->getIdentifier();
                         $entityType = 'cms-page';
@@ -756,6 +741,63 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
         return $boolSave;
     }
 
+    /**
+     * @param $data
+     * @param $type
+     */
+    public function isDataUpdatable($data, $type)
+    {
+        $valueFounds = [];
+        $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($data);
+
+        if (!isset($data->tag) || $data->tag == '') {
+            $this->addMsgError('Need tag in updatable '. $type);
+        } elseif (!isset($data->value) || !is_array($data->value) || empty($data->value)) {
+            $this->addMsgError('Need values to check in updatable '. $type);
+        } else {
+            if ($type == 'Product') {
+                $object = $this->mazenMagentoTools->loadObjectFromType('Product', $data->id, $storeViewId);
+                $idObj = $object->getId();
+                $content = $object->getDescription();
+            } elseif ($type == 'Category') {
+                $object = $this->mazenMagentoTools->loadObjectFromType('Category', $data->id, $storeViewId);
+                $idObj = $object->getId();
+                $content = $object->getDescription();
+            } else {
+                $object = $this->mazenMagentoTools->loadObjectFromType('Page', $data->id);
+                $idObj = $object->getPageId();
+                $content = $object->getContent();
+            }
+
+            if (isset($idObj) && $idObj != '' && is_numeric($idObj)) {
+                $nodes = $this->optimizmeMazenDomManipulation->getNodesInDom($data->tag, $content);
+                if ($nodes->length > 0) {
+                    foreach ($data->value as $search) {
+                        $flagFound = 0;
+                        foreach ($nodes as $node) {
+                            if (isset($data->attribute) && $data->attribute != '') {
+                                // search in node attributes
+                                if ($node->getAttribute($data->attribute) == $search) {
+                                    $flagFound = 1;
+                                }
+                            } else {
+                                // search in node value
+                                if ($node->nodeValue == $search) {
+                                    $flagFound = 1;
+                                }
+                            }
+                        }
+                        if ($flagFound == 1) {
+                            array_push($valueFounds, $search);
+                        }
+                    }
+                }
+                $this->returnAjax['editable'] = $valueFounds;
+            } else {
+                array_push($this->returnAjax['error'], 'Error loading post with id '. $data->id);
+            }
+        }
+    }
 
     ////////////////////////////////////////////////
     //              PRODUCT CATEGORIES
@@ -785,18 +827,20 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
         }
 
         foreach ($tabLoopStoreId as $storeViewIdLoop) {
-            $categories = $this->categoryCollectionFactory->create()->setStoreId($storeViewIdLoop)->getData();
+            $categories = $this->categoryCollectionFactory->create()
+                ->setStoreId($storeViewIdLoop)
+                ->addAttributeToSelect('*')
+                ->getItems();
 
             if (!empty($categories)) {
                 foreach ($categories as $categoryLoop) {
-                    // get category details
-                    $category = $this->categoryRepository->get($categoryLoop['entity_id'], $storeViewIdLoop);
-
+                    // v2
+                    $categoryLoop->setStoreId($storeViewIdLoop);
                     // don't get root category "Root Catalog"
-                    if ($category->getLevel() > 0) {
+                    if ($categoryLoop->getLevel() > 0) {
                         $categoryMazen = $this->optimizmeMazenUtils->formatCategoryForMazen(
                             $this->optimizmeMazenDomManipulation,
-                            $category,
+                            $categoryLoop,
                             0,
                             $fieldsFilter
                         );
@@ -820,8 +864,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
         $storeViewId = $this->optimizmeMazenUtils->extractStoreViewFromMazenData($objData);
 
         // get category details
-        $category = $this->categoryRepository->get($elementId, $storeViewId);
-
+        $category = $this->mazenMagentoTools->loadObjectFromType('Category', $elementId, $storeViewId);
         $categoryStatus = $category->getIsActive();
         if ($categoryStatus == 2) {
             $categoryStatus = 0;
@@ -847,6 +890,9 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
 
     /**
      * Get cms pages list
+     * @param $data
+     * @param int $forGeneric
+     * @return array
      */
     public function getPages($data, $forGeneric = 0)
     {
@@ -870,18 +916,17 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
                 if ($page->getId() && is_numeric($page->getId())) {
                     array_push($tabPages, $page);
                 } else {
-                    //array_push($this->returnAjax['link_error'], $link);
                     array_push($tabLinkError, $link);
                 }
             }
         } else {
             // no link filter
-            $collection = $this->pageCollectionFactory->create();
-            $pages = $collection->getData();
+            $pages = $this->pageCollectionFactory->create()
+                ->addFieldToSelect('*')
+                ->getItems();
             if (!empty($pages)) {
                 foreach ($pages as $pageBoucle) {
-                    $page = $this->pageRepository->getById($pageBoucle['page_id']);
-                    array_push($tabPages, $page);
+                    array_push($tabPages, $pageBoucle);
                 }
             }
         }
@@ -922,8 +967,7 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
     public function getPage($idPost)
     {
         // get page detail
-        $page = $this->pageRepository->getById($idPost);
-
+        $page = $this->mazenMagentoTools->loadObjectFromType('Page', $idPost);
         if ($page->getPageId() != '') {
             $this->returnAjax['page'] = $this->optimizmeMazenUtils->formatObjectForMazen(
                 $this->optimizmeMazenDomManipulation,
@@ -1028,15 +1072,13 @@ class OptimizmeMazenActions extends \Magento\Framework\App\Helper\AbstractHelper
                 $isValid = 0;
             }
 
-            $this->returnAjax = array(
+            $this->returnAjax = [
                 'is_valid' => $isValid
-            );
-        }
-        else {
+            ];
+        } else {
             array_push($this->tabErrors, 'Need more informations for credentials check.');
         }
     }
-
 
     /**
      * Return Mazen plugin version

@@ -10,8 +10,8 @@ class OptimizmeMazenActionsDispatcherAll extends \Magento\Framework\App\Helper\A
     private $mazenAction;
 
     /**
-     * OptimizmeMazenActionsDispatcherProduct constructor.
-     * @param OptimizmeMazenActions $optimizmeMazenActions
+     * OptimizmeMazenActionsDispatcherAll constructor.
+     * @param \Optimizme\Mazen\Helper\OptimizmeMazenActions $optimizmeMazenActions
      */
     public function __construct(
         \Optimizme\Mazen\Helper\OptimizmeMazenActions $optimizmeMazenActions

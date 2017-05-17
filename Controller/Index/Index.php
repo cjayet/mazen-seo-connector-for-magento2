@@ -16,13 +16,9 @@ use Firebase\JWT\JWT;
  */
 class Index extends \Magento\Framework\App\Action\Action
 {
-    private $optimizmeActionDispatcher;
-    private $optimizmeAction;
-    private $optimizmeUtils;
+    private $optimizmeCore;
     private $optimizmeJwt;
     private $optimizmeJsonMessages;
-
-    private $boolNoAction;
 
     const OPTIMIZME_MAZEN_URL_HOOK = 'https://mazen-app.com/mazen-webhook/logger.php';
     const OPTIMIZME_MAZEN_VERSION = '0.9.1';
@@ -30,26 +26,19 @@ class Index extends \Magento\Framework\App\Action\Action
     /**
      * Index constructor.
      * @param Context $context
-     * @param \Optimizme\Mazen\Helper\Dispatcher\OptimizmeMazenActionsDispatcher $optimizmeMazenActionDispatcher
-     * @param \Optimizme\Mazen\Helper\OptimizmeMazenActions $optimizmeMazenAction
-     * @param \Optimizme\Mazen\Helper\OptimizmeMazenUtils $optimizmeMazenUtils
+     * @param \Optimizme\Mazen\Helper\OptimizmeMazenCore $optimizmeMazenCore
      * @param \Optimizme\Mazen\Helper\OptimizmeMazenJwt $optimizmeMazenJwt
      * @param \Optimizme\Mazen\Helper\OptimizmeMazenJsonMessages $optimizmeJsonMessages
      */
     public function __construct(
         Context $context,
-        \Optimizme\Mazen\Helper\Dispatcher\OptimizmeMazenActionsDispatcher $optimizmeMazenActionDispatcher,
-        \Optimizme\Mazen\Helper\OptimizmeMazenActions $optimizmeMazenAction,
-        \Optimizme\Mazen\Helper\OptimizmeMazenUtils $optimizmeMazenUtils,
+        \Optimizme\Mazen\Helper\OptimizmeMazenCore $optimizmeMazenCore,
         \Optimizme\Mazen\Helper\OptimizmeMazenJwt $optimizmeMazenJwt,
         \Optimizme\Mazen\Helper\OptimizmeMazenJsonMessages $optimizmeJsonMessages
     ) {
-        $this->optimizmeActionDispatcher = $optimizmeMazenActionDispatcher;
-        $this->optimizmeAction = $optimizmeMazenAction;
-        $this->optimizmeUtils = $optimizmeMazenUtils;
+        $this->optimizmeCore = $optimizmeMazenCore;
         $this->optimizmeJwt = $optimizmeMazenJwt;
         $this->optimizmeJsonMessages = $optimizmeJsonMessages;
-        $this->boolNoAction = 0;
 
         parent::__construct($context);
     }
@@ -84,87 +73,28 @@ class Index extends \Magento\Framework\App\Action\Action
             if (isset($jsonData->data_optme) && $jsonData->data_optme != '') {
                 if ($this->optimizmeJwt->isJwt($jsonData->data_optme)) {
                     // JWT
-                    $idProject = $this->optimizmeJwt->getIdProject($jsonData->data_optme);
-                    if ($idProject != 0) {
-                        $jwtSecret = $this->optimizmeJwt->getJwtKey($idProject);
-                        if ($jwtSecret != '') {
-                            try {
-                                // try decode JSON Web Token
-                                $decoded = JWT::decode($jsonData->data_optme, $jwtSecret, ['HS256']);
-                                $dataOptimizme = $decoded;
-                                $doAction = 1;
-                            } catch (\Firebase\JWT\SignatureInvalidException $e) {
-                                $msg = 'JSON Web Token not decoded properly, secret may be not correct';
-                                $this->optimizmeJsonMessages->setMsgReturn($msg, 'danger');
-                            }
+                    $jwtSecret = $this->optimizmeJwt->getJwtKey($jsonData->data_optme);
+                    if ($jwtSecret != '') {
+                        try {
+                            // try decode JSON Web Token
+                            $decoded = JWT::decode($jsonData->data_optme, $jwtSecret, ['HS256']);
+                            $dataOptimizme = $decoded;
+                            $doAction = 1;
+                        } catch (\Firebase\JWT\SignatureInvalidException $e) {
+                            $msg = 'JSON Web Token not decoded properly, secret may be not correct';
+                            $this->optimizmeJsonMessages->setMsgReturn($msg, 'danger');
                         }
                     }
                 } else {
                     // simple JSON, only for "register_cms" action
                     $dataOptimizme = $jsonData->data_optme;
-                    if (!is_object($dataOptimizme) || $dataOptimizme->action != 'register_cms') {
-                        $msg = 'JSON Web Token needed';
-                        $this->optimizmeJsonMessages->setMsgReturn($msg, 'danger');
-                    } else {
-                        $doAction = 1;
-                    }
+                    $doAction = $this->optimizmeCore->isItOkForNoJwtAction($dataOptimizme);
                 }
             }
 
-            if ($doAction == 1) {
-                // post id
-                $postId = '';
-                if (isset($dataOptimizme->url_cible) && is_numeric($dataOptimizme->url_cible)) {
-                    $postId = $dataOptimizme->url_cible;
-                } else {
-                    if (isset($dataOptimizme->id_post) && $dataOptimizme->id_post != '') {
-                        $postId = $dataOptimizme->id_post;
-                    } elseif (isset($dataOptimizme->id) && $dataOptimizme->id != '') {
-                        $postId = $dataOptimizme->id;
-                    }
-                }
-
-                // ACTIONS
-                if (!isset($dataOptimizme->action) || $dataOptimizme->action == '') {
-                    // no action specified
-                    $msg = 'No action defined';
-                    $this->optimizmeJsonMessages->setMsgReturn($msg, 'danger');
-                } else {
-                    // action to do
-                    $this->boolNoAction = $this->optimizmeActionDispatcher->dispatchMazenAction(
-                        $dataOptimizme,
-                        $this->optimizmeAction,
-                        $postId
-                    );
-
-                    // results of action
-                    if ($this->boolNoAction == 1) {
-                        // no action done
-                        $msg = 'No action found!';
-                        $this->optimizmeJsonMessages->setMsgReturn($msg, 'danger');
-                    } else {
-                        // action done
-                        if (is_array($this->optimizmeAction->tabErrors) && !empty($this->optimizmeAction->tabErrors)) {
-                            $msg = 'One or several errors have been raised: ';
-                            $this->optimizmeJsonMessages->setMsgReturn(
-                                $msg,
-                                'danger',
-                                $this->optimizmeAction->tabErrors
-                            );
-                        } elseif (is_array($this->optimizmeAction->returnAjax) &&
-                            !empty($this->optimizmeAction->returnAjax)
-                        ) {
-                            // ajax to return - encode data
-                            $this->optimizmeJsonMessages->setDataReturn(
-                                $this->optimizmeAction->returnAjax
-                            );
-                        } else {
-                            // no error, OK !
-                            $msg = 'Action done!';
-                            $this->optimizmeJsonMessages->setMsgReturn($msg, 'success');
-                        }
-                    }
-                }
+            if ($doAction == 1 && isset($dataOptimizme)) {
+                // ok
+                $this->optimizmeCore->doMazenAction($dataOptimizme);
             }
         }
     }

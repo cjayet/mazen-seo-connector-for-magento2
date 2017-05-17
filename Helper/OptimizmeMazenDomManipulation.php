@@ -1,8 +1,6 @@
 <?php
 namespace Optimizme\Mazen\Helper;
 
-use Firebase\JWT\JWT;
-
 /**
  * Class OptimizmeMazenDomManipulation
  * @package Optimizme\Mazen\Helper
@@ -39,7 +37,7 @@ class OptimizmeMazenDomManipulation extends \Magento\Framework\App\Helper\Abstra
         libxml_clear_errors();
 
         // get all images in post content
-        $xp = new \DOMXPath($this->domDocument);
+        $xp    = new \DOMXPath($this->domDocument);
 
         // tags to parse and attributes to transform
         $tabParseScript = [
@@ -79,7 +77,6 @@ class OptimizmeMazenDomManipulation extends \Magento\Framework\App\Helper\Abstra
 
         return $newContent;
     }//end changeDomContent()
-
 
     /**
      * Get Dom from html and add a "<span>" tag in top

@@ -52,10 +52,10 @@ class OptimizmeMazenActionsDispatcher extends \Magento\Framework\App\Helper\Abst
         return $boolNoAction;
     }
 
-
     /**
+     * V1 : will be removed soon
      * @param $data
-     * @param OptimizmeMazenActions $optimizmeMazenAction
+     * @param \Optimizme\Mazen\Helper\OptimizmeMazenActions $optimizmeMazenAction
      * @param string $postId
      * @return int
      */

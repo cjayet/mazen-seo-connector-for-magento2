@@ -11,7 +11,7 @@ class OptimizmeMazenActionsDispatcherRedirection extends \Magento\Framework\App\
 
     /**
      * OptimizmeMazenActionsDispatcherRedirection constructor.
-     * @param OptimizmeMazenActions $optimizmeMazenActions
+     * @param \Optimizme\Mazen\Helper\OptimizmeMazenActions $optimizmeMazenActions
      */
     public function __construct(
         \Optimizme\Mazen\Helper\OptimizmeMazenActions $optimizmeMazenActions

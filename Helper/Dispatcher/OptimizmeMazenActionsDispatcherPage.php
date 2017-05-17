@@ -11,7 +11,7 @@ class OptimizmeMazenActionsDispatcherPage extends \Magento\Framework\App\Helper\
 
     /**
      * OptimizmeMazenActionsDispatcherPage constructor.
-     * @param OptimizmeMazenActions $optimizmeMazenActions
+     * @param \Optimizme\Mazen\Helper\OptimizmeMazenActions $optimizmeMazenActions
      */
     public function __construct(
         \Optimizme\Mazen\Helper\OptimizmeMazenActions $optimizmeMazenActions
@@ -38,6 +38,10 @@ class OptimizmeMazenActionsDispatcherPage extends \Magento\Framework\App\Helper\
     {
         if (!isset($data->id) || !is_numeric($data->id)) {
             $this->mazenAction->addMsgError('ID is not set in update '. $data->type);
+        } elseif (!isset($data->field)) {
+            $this->mazenAction->addMsgError('Field is not set in update '. $data->type);
+        } elseif (!isset($data->value)) {
+            $this->mazenAction->addMsgError('Value is not set in update '. $data->type);
         } else {
             $postId = $data->id;
             $type = 'Page';
@@ -73,6 +77,19 @@ class OptimizmeMazenActionsDispatcherPage extends \Magento\Framework\App\Helper\
             } else {
                 $this->mazenAction->addMsgError('Field '. $data->field .' is not supported in update '. $data->type);
             }
+        }
+    }
+
+    /**
+     * @param $data
+     */
+    public function updatable($data)
+    {
+        if (!isset($data->id) || !is_numeric($data->id)) {
+            $msg = __('Id is not set in updatable '. $data->type, 'optimizme-mazen');
+            $this->mazenAction->addMsgError($msg);
+        } else {
+            $this->mazenAction->isDataUpdatable($data, 'Page');
         }
     }
 }
