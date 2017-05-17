@@ -84,7 +84,9 @@ class OptimizmeMazenActionsDispatcherCategory extends \Magento\Framework\App\Hel
             ) {
                 $this->mazenAction->changeSomeContentInTag($id, $data, $type, 'Description', $data->field);
             } else {
-                $this->mazenAction->addMsgError('Field '. $data->field .' is not supported in update '. $data->type);
+                $this->mazenAction->addMsgError(
+                    'Field '. $data->field .' is not supported in update '. $data->type
+                );
             }
         }
     }
